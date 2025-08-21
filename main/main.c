@@ -1,103 +1,85 @@
 #include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "driver/gpio.h"
-#include "spi_flash_mmap.h"
-#include "esp_adc/adc_continuous.h"
-#include "driver/gptimer.h"
-#include "freertos/queue.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <ads111x.h>
+#include <string.h>
+#include <math.h>
 
 #include "ecg.h"
 
+#define SDA_PORT        21
+#define SCL_PORT        22
+#define I2C_PORT        0
+#define GAIN            ADS111X_GAIN_2V048  // Menor gain para ECG (mV range)
+
+// Configurações para ECG
+#define ECG_SAMPLE_RATE     100.0           // 100 Hz sample rate
+#define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
+
+// Filtros para ECG
+#define LOWPASS_CUTOFF      40.0    // Remove ruído > 40Hz  
+#define HIGHPASS_CUTOFF     0.5     // Remove DC drift < 0.5Hz
+#define NOTCH_FREQ          60.0    // Remove 60Hz (rede elétrica)
+
+#ifndef APP_CPU_NUM
+#define APP_CPU_NUM     PRO_CPU_NUM
+#endif
+
+// Variáveis globais
+static i2c_dev_t device;
+static float gain_val;
+
+// Função de medição otimizada para ECG
+static void measure_ecg(void) {
+    int16_t raw = 0;
+    
+    if(ads111x_get_value(&device, &raw) == ESP_OK) {
+        // Saída principal (usar para plotagem)
+        printf("%d\n", raw);        
+    } else {
+        printf("# ADC Error\n");
+    }
+}
+
 void config_ports(void) {
+    // Configurar GPIOs para leads-off detection
     gpio_set_direction(18, GPIO_MODE_INPUT);
     gpio_set_direction(19, GPIO_MODE_INPUT);
+    
+    // I2C pins
+    gpio_set_direction(21, GPIO_MODE_INPUT_OUTPUT_OD);  // SDA
+    gpio_set_direction(22, GPIO_MODE_OUTPUT_OD);        // SCL
 }
 
 void app_main(void) {
+    printf("=== ECG Monitor com ADS1115 ===\n");
+    
     config_ports();
 
-    adc_config();
+    // Inicializar I2C
+    ESP_ERROR_CHECK(i2cdev_init());
 
+    // Configurar ADS1115 para ECG
+    gain_val = ads111x_gain_values[GAIN];
+
+    ESP_ERROR_CHECK(ads111x_init_desc(&device, ADS111X_ADDR_GND, I2C_PORT, SDA_PORT, SCL_PORT));
+    ESP_ERROR_CHECK(ads111x_set_mode(&device, ADS111X_MODE_CONTINUOUS));
+    ESP_ERROR_CHECK(ads111x_set_data_rate(&device, ADS111X_DATA_RATE_475));  // 475 SPS para ECG
+    ESP_ERROR_CHECK(ads111x_set_input_mux(&device, ADS111X_MUX_0_1));       // Diferencial A0-A1
+    ESP_ERROR_CHECK(ads111x_set_gain(&device, GAIN));
+
+    // Delay para estabilizar
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    // Loop principal de aquisição
     while(1) {
-        adc_read();
-    }
-}
-
-/*
-# define TIMER_INTR_SEL TIMER_INTR_LEVEL
-# define TIMER_GROUP TIMER_GROUP_0
-# define TIMER_DIVIDER 80
-# define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER)
-# define TIMER_FINE_ADJ (0*(TIMER_BASE_CLK/TIMER_DIVIDER) /1000000)
-# define TIMER_INTERVAL0_SEC (0.01)
-
-QueueHandle_t queue;
-
-void IRAM_ATTR timer_group0_isr(void *p) {
-    int timer_idx = (int) p;
-    int value;
-    esp_err_t r = ESP_OK;
-    uint32_t intr_status = TIMERGO.int_st_timer.val;
-    BaseType_t priorityFlag = pdFALSE;
-
-    if((intr_status & BIT(timer_idx)) && timer_idx == TIMER_0) {
-        TIMERGO.hw_timer[timer_idx].update = 1;
-        TIMERGO.hw_timer[timer_idx].config.alarm_en = 1;
-
-        if(gpio_get_level(19) == 1 || gpio_get_level(18) == 1) {
-            value = 0;
+        // Verificar leads-off (eletrodos desconectados)
+        if(gpio_get_level(18) == 1 || gpio_get_level(19) == 1) {
+            printf("# LEADS OFF!\n");
+            vTaskDelay(pdMS_TO_TICKS(500));
         } else {
-            r = adc2_get_raw(ADC_CHANNEL_0, ADC_BITWIDTH_12, &value); //FAZER O CONTÍNUO
-        }
-
-        if(r == ESP_OK) xQueueSendFromISR(queue, &value, &priorityFlag);
-    }
-}
-
-void timer0_init() {
-    int timer_group = TIMER_GROUP_0;
-    int timer_idx = TIMER_0;
-    timer_config_t config;
-
-    config.alarm_en = 1;
-    config.auto_reload = 1;
-    config.counter_dir = TIMER_COUNT_UP;
-    config.divider = TIMER_DIVIDER;
-    config.intr_type = TIMER_INTR_SEL;
-    config.counter_en = TIMER_PAUSE;
-    timer_init (timer_group ,timer_idx ,&config);
-    timer_pause(timer_group, timer_idx);
-    timer_set_counter_value(timer_group , timer_idx, 0x00000000ULL);
-    timer_set_alarm_value(timer_group, timer_idx, (TIMER_INTERVAL0_SEC * TIMER_SCALE) - TIMER_FINE_ADJ);
-    timer_enable_intr(timer_group, timer_idx);
-    timer_isr_register(timer_group, timer_idx, timer_group0_isr, (void*) timer_idx, ESP_INTR_FLAG_IRAM, NULL );
-    timer_start(timer_group , timer_idx);
-}
-
-void task_heart(void *pvParameter) {
-    int value = 0;
-    for(;;) {
-        if(xQueueReceive(queue, &value, (TickType_t)(1000 / portTICK_PERIOD_MS)) == pdTRUE) {
-            printf("%d\n", value );
+            measure_ecg();
+            vTaskDelay(pdMS_TO_TICKS((int)ECG_DELAY_MS));  // para 100Hz
         }
     }
 }
-
-void app_main(void) {
-    queue = xQueueCreate(10, sizeof(int));
-
-    gpio_set_direction(4, GPIO_MODE_OUTPUT);
-    gpio_set_direction(19, GPIO_MODE_INPUT);
-    gpio_set_direction(18, GPIO_MODE_INPUT);
-
-    gpio_set_level(4, 0);
-
-    adc2_config_channel_atten(ADC2_CHANNEL_0, ADC_ATTEN_11db);
-
-    timer0_init();
-
-    xTaskCreate(&task_heart, "transmitter", 2048, NULL, 5, NULL);
-}
-*/
