@@ -10,6 +10,12 @@
 #define APP_CPU_NUM     PRO_CPU_NUM
 #endif
 
+#define ECG_BUFFER_SIZE     512
+
+static uint16_t ecg_buf_idx = 0;
+static uint16_t buffer[ECG_BUFFER_SIZE];
+static uint16_t ecg_value;
+
 // Variáveis globais
 i2c_dev_t device;
 float gain_val;
