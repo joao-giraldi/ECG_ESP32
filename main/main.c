@@ -3,7 +3,7 @@
 #include <freertos/task.h>
 #include <ads111x.h>
 #include <string.h>
-#include <math.h>
+#include <sys/unistd.h> 
 
 #include "ecg.h"
 
@@ -16,29 +16,49 @@
 #define ECG_SAMPLE_RATE     100.0           // 100 Hz sample rate
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
 
-// Filtros para ECG
-#define LOWPASS_CUTOFF      40.0    // Remove ruído > 40Hz  
-#define HIGHPASS_CUTOFF     0.5     // Remove DC drift < 0.5Hz
-#define NOTCH_FREQ          60.0    // Remove 60Hz (rede elétrica)
 
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM     PRO_CPU_NUM
 #endif
+
+#define ECG_BUFFER_SIZE     512
+
+static uint16_t ecg_buf_idx = 0;
+static uint16_t buffer[ECG_BUFFER_SIZE];
+static uint16_t ecg_value;
 
 // Variáveis globais
 static i2c_dev_t device;
 static float gain_val;
 
 // Função de medição otimizada para ECG
-static void measure_ecg(void) {
+static uint16_t measure_ecg(void) {
     int16_t raw = 0;
     
     if(ads111x_get_value(&device, &raw) == ESP_OK) {
         // Saída principal (usar para plotagem)
-        printf("%d\n", raw);        
+        printf("%d\n", raw);
+        return raw;       
     } else {
         printf("# ADC Error\n");
+        return 0;
     }
+}
+
+// Ex.: append_bin("/leitura/leitura_1.bin", buffer, 512 * sizeof(uint16_t));
+void append_bin(const char *path, const void *buf, size_t bytes)
+{
+    FILE *f = fopen(path, "ab");
+    if (!f)
+    {
+        printf("ERRO AO ABRIR O ARQUIVO!!!!!!!!!!!!!!!!!!!!\n");
+        return;
+    };
+
+    fwrite(buf, 1, bytes, f);
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
 }
 
 void config_ports(void) {
@@ -78,7 +98,19 @@ void app_main(void) {
             printf("# LEADS OFF!\n");
             vTaskDelay(pdMS_TO_TICKS(500));
         } else {
-            measure_ecg();
+            ecg_value = measure_ecg();
+
+            if(ecg_buf_idx == ECG_BUFFER_SIZE - 1)
+            {
+                ecg_buf_idx = 0;
+                append_bin("/sdcard/leitura/leitura_1.bin", buffer, 512 * sizeof(uint16_t));
+                buffer[ecg_buf_idx] = ecg_value;
+                ecg_buf_idx++;
+            }
+            else {
+                buffer[ecg_buf_idx] = ecg_value;
+                ecg_buf_idx++;
+            }
             vTaskDelay(pdMS_TO_TICKS((int)ECG_DELAY_MS));  // para 100Hz
         }
     }
