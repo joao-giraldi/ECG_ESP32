@@ -3,21 +3,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 #include "driver/gpio.h"
-#include "esp_adc/adc_continuous.h"
-#include "sdkconfig.h"
-#include "soc/soc_caps.h"
+#include "ads111x.h"
+
+#include "ports.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define READ_LEN 32
+#define ADS_GAIN            ADS111X_GAIN_2V048
+#define ECG_SAMPLE_RATE     100           // 500 Hz sample rate
+#define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
 
-void adc_config(void);
-void adc_read(void);
-void adc_deinit(void);
+esp_err_t ecg_config(void);
+void ecg_task(void *pvParameters);
+void ecg_measure(void);
 
 #ifdef __cplusplus
 }
