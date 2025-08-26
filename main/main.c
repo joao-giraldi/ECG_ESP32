@@ -18,7 +18,7 @@ extern sdmmc_card_t* sd_card;
 
 void app_main(void) {
     printf("=== ECG Monitor com ADS1115 ===\n");
-    wifi_init_ap("ECG-ESP32", "12345678", 6, 4, true);
+    wifi_init_ap("ECG-ESP32", "12345678", 6, 4, false);
 
     // ESP_ERROR_CHECK(config_ports());
     // ESP_ERROR_CHECK(ecg_config());

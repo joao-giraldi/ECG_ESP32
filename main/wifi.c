@@ -1,45 +1,4 @@
-
-
-// void ap_wifi_config(void) {
-//     //esp_wifi_init(WIFI_INIT_CONFIG_DEFAULT);
-
-//     ESP_ERROR_CHECK(esp_netif_init());
-//     ESP_ERROR_CHECK(esp_event_loop_crete_default());
-//     esp_netif_create_default();
-
-//     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-//     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-//     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVEN_ANY_ID, &wifi_event_handler, NULL, NULL));
-
-//     wifi_config_t wifi_config = {
-//         .ap = {
-//             .ssid = WIFI_SSID,
-//             .ssid_len = strlen(WIFI_SSID),
-//             .channel = CONFIG_ESP_WIFI_CHANNEL,
-//             .password = WIFI_PASS,
-//             .max_connection = CONFIG_ESP_MAX_STA_CONN,
-//             .pmfcfg = {
-//                 .required = true,
-//             },
-//         }
-//     };
-
-//     if(strlen(WIFI_PASS) == 0) {
-//         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-//     }
-
-//     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-//     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
-//     ESP_ERROR_CHECK(esp_wifi_start());
-
-//     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s,
-//              WIFI_SSID, WIFI_PASS);
-// }
-
 #include <string.h>
-#include "freertos/FreeRTOS.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
