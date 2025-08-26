@@ -20,7 +20,7 @@ extern "C" {
 #define SD_SCK_PORT         15
 #define SD_CS_PORT          5
 
-void config_ports(void);
+esp_err_t config_ports(void);
 
 #ifdef __cplusplus
 }

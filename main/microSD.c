@@ -99,6 +99,6 @@ void sd_config(void) {
         return;
     }
 
-    ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
     */
+   ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
 }

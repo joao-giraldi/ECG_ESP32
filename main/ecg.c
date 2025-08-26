@@ -1,7 +1,7 @@
 #include "ecg.h"
 
-extern i2c_dev_t device;
-extern float gain_val;
+i2c_dev_t device;
+float gain_val;
 
 esp_err_t ecg_config(void) {
     // Inicializar I2C
