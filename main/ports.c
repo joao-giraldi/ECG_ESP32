@@ -8,4 +8,10 @@ void config_ports(void) {
     // I2C pins
     gpio_set_direction(ADS_SDA_PORT, GPIO_MODE_INPUT_OUTPUT_OD);  // SDA
     gpio_set_direction(ADS_SCL_PORT, GPIO_MODE_OUTPUT_OD);        // SCL
+
+    //Pinos do microSD
+    gpio_set_direction(SD_CS_PORT, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SD_SCK_PORT, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SD_MOSI_PORT, GPIO_MODE_OUTPUT);
+    gpio_set_direction(SD_MISO_PORT, GPIO_MODE_INPUT);
 }

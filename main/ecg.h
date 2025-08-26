@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 #define ADS_GAIN            ADS111X_GAIN_2V048
-#define ECG_SAMPLE_RATE     100           // 500 Hz sample rate
+#define ECG_SAMPLE_RATE     100           // 100 Hz sample rate
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
 
 esp_err_t ecg_config(void);
