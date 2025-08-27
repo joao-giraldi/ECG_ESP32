@@ -3,37 +3,68 @@
 sdmmc_card_t* sd_card;
 const char mount_point[] = MOUNT_POINT;
 
-void write_file(const char *path, char *data) {
-    ESP_LOGI("SD", "Abrindo arquivo");
-    FILE *f = fopen(path, "w");
+QueueHandle_t ecg_buffer_queue;
+
+void write_file(const char *path, uint16_t *data) {
+    ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
+    FILE *f = fopen(path, "ab");
     if(f == NULL) {
         ESP_LOGE("SD", "Falha ao abrir o arquivo");
         return;
     }
-    fprintf(f, data);
+    fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
     fclose(f);
     ESP_LOGI("SD", "Arquivo escrito");
 }
 
+// GEPETO LEU
 void read_file(const char *path) {
-    ESP_LOGI("SD", "Abrindo arquivo");
-    FILE *f = fopen(path, "r");
+    ESP_LOGI("SD", "Abrindo arquivo para LEITURA BINÁRIA");
+    FILE *f = fopen(path, "rb");
     if(f == NULL) {
         ESP_LOGE("SD", "Falha ao abrir o arquivo");
         return;
     }
-    char line[64];
-    fgets(line, sizeof(line), f);
-    fclose(f);
+    
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
-    char *pos = strchr(line, '\n');
-    if(pos) {
-        *pos = '\0';
+    int total_samples = file_size / sizeof(uint16_t);
+    ESP_LOGI("SD", "Arquivo tem %d bytes, %d amostras ECG", (int)file_size, total_samples);
+
+    uint16_t buffer[ECG_BUFFER_SIZE];
+    int samples_read = 0;
+    
+    while(samples_read < total_samples) {
+        int samples_to_read = (total_samples - samples_read) > ECG_BUFFER_SIZE ? 
+                              ECG_BUFFER_SIZE : (total_samples - samples_read);
+        
+        size_t read_count = fread(buffer, sizeof(uint16_t), samples_to_read, f);
+        
+        if(read_count > 0) {
+            ESP_LOGI("SD", "Lidas %d amostras:", (int)read_count);
+            
+            // Imprimir as amostras (ou processar como necessário)
+            for(int i = 0; i < read_count; i++) {
+                printf("Amostra %d: %u\n", samples_read + i, buffer[i]);
+            }
+            
+            samples_read += read_count;
+        } else {
+            ESP_LOGE("SD", "Erro na leitura ou fim do arquivo");
+            break;
+        }
     }
-    ESP_LOGI("SD", "Lido do arquivo: %s", line);
+    
+    fclose(f);
+    ESP_LOGI("SD", "Leitura do arquivo concluída");
 }
 
 void sd_config(void) {
+
+    // INICIALIZACAO DA QUEUE
+    ecg_buffer_queue = xQueueCreate(5, sizeof(uint16_t) * ECG_BUFFER_SIZE);
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .max_files = 5,
@@ -101,4 +132,18 @@ void sd_config(void) {
 
     */
    ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
+}
+
+void sd_task(void *pvParameters) {
+    ESP_LOGI("SD", "INICIANDO TASK SD");
+    uint16_t temp[ECG_BUFFER_SIZE];
+    char *filename = MOUNT_POINT"/ecggg.bin";
+
+    while(1) {
+        if(xQueueReceive(ecg_buffer_queue, temp, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI("SD", "DADOS RECEBIDOS DA FILA");
+            write_file(filename, temp);
+            //read_file(filename);  //TESTE DE LEITURA
+        }      
+    }
 }

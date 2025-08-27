@@ -22,17 +22,9 @@ void app_main(void) {
     sd_config();
     
     vTaskDelay(pdMS_TO_TICKS(1000));
-
-    //TESTE SD
-    const char *file_hello = MOUNT_POINT"/hello.txt";
-    char data[64];
-    snprintf(data, 64, "%s %s!\n", "Hello", sd_card->cid.name);
-    write_file(file_hello, data);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    read_file(file_hello);
-    vTaskDelay(pdMS_TO_TICKS(500));
     
     xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 3, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(sd_task, "sd_task", 4096, NULL, 2, NULL, APP_CPU_NUM);
 
     printf("Tasks criadas com sucesso!");
 }

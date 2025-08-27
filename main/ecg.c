@@ -2,6 +2,15 @@
 
 i2c_dev_t device;
 float gain_val;
+extern QueueHandle_t ecg_buffer_queue;
+
+#define ECG_MAX_VOLTAGE     2.048f
+#define ECG_RESOLUTION      65535
+
+// A DISCUTIR...
+float raw_to_voltage(uint16_t raw) {
+    return (raw * ECG_MAX_VOLTAGE) / ECG_RESOLUTION;
+}
 
 esp_err_t ecg_config(void) {
     // Inicializar I2C
@@ -19,25 +28,36 @@ esp_err_t ecg_config(void) {
     return ESP_OK;
 }
 
-void ecg_measure(void) {
+uint16_t ecg_measure(void) {
     int16_t raw = 0;
     
     if(ads111x_get_value(&device, &raw) == ESP_OK) {
-        // Saída principal (usar para plotagem)
-        printf("%d\n", raw);        
+        return raw;
     } else {
-        printf("# ADC Error\n");
+        ESP_LOGE("ADC", "ERRO NA LEITURA DO ADC.");
+        return 0;
     }
 }
 
 void ecg_task(void *pvParameters) {
+    uint16_t idx = 0;
+    uint16_t buffer[ECG_BUFFER_SIZE];
     while(1) {
         // Verificar leads-off (eletrodos desconectados)
         if(gpio_get_level(ECG_LO_MENOS) == 1 || gpio_get_level(ECG_LO_MAIS) == 1) {
             printf("# LEADS OFF!\n");
             vTaskDelay(pdMS_TO_TICKS(500));
         } else {
-            ecg_measure();
+            buffer[idx] = ecg_measure();
+            printf("%d\n",buffer[idx]);
+            idx++;
+
+            if(idx == ECG_BUFFER_SIZE) {
+                xQueueSend(ecg_buffer_queue, &buffer, 0);
+                vTaskDelay(pdTICKS_TO_MS(5000));
+                printf("%d\n",buffer[ECG_BUFFER_SIZE-1]);
+                idx = 0;
+            }            
             vTaskDelay(pdMS_TO_TICKS((int)ECG_DELAY_MS));
         }
     }
