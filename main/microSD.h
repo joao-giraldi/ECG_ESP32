@@ -7,6 +7,9 @@
 #include "esp_log.h"
 #include "freertos/queue.h"
 
+#include "dirent.h"
+#include "sys/stat.h"
+
 #include "ports.h"
 #include "ecg.h"
 
@@ -18,8 +21,10 @@ extern "C" {
 
 void sd_config(void);
 void sd_task(void *pvParameters);
-void write_file(const char *path, uint16_t *data);
+void write_file(const char *path, int16_t *data);
 void read_file(const char *path);
+
+uint8_t get_next_file_number(void);
 
 #ifdef __cplusplus
 }

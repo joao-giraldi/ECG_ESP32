@@ -5,16 +5,49 @@ const char mount_point[] = MOUNT_POINT;
 
 QueueHandle_t ecg_buffer_queue;
 
-void write_file(const char *path, uint16_t *data) {
+extern TaskHandle_t ecg_handler;
+
+void write_file(const char *path, int16_t *data) {
     ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
-    FILE *f = fopen(path, "ab");
+    static FILE *f = NULL;
+    static uint8_t write_count = 0;
+
+    if(f == NULL) {
+        f = fopen(path, "ab");
+        if(f == NULL) {
+            ESP_LOGE("SD", "Falha ao abrir o arquivo");
+            return;
+        }
+    }
+
+    fflush(f);
+
+    size_t written = fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
+    
+    if(written != ECG_BUFFER_SIZE) {
+        ESP_LOGE("SD", "Erro na escrita: %d/%d", written, ECG_BUFFER_SIZE);
+    }
+
+    fflush(f);
+        
+    write_count++;
+
+    if(write_count % 5 == 0) {
+        fclose(f);
+        f = NULL;  // Será reaberto na próxima escrita
+        write_count = 0;
+        ESP_LOGI("SD", "Arquivo fechado e reaberto para segurança");
+    }
+
+    /*
     if(f == NULL) {
         ESP_LOGE("SD", "Falha ao abrir o arquivo");
         return;
     }
     fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
     fclose(f);
-    ESP_LOGI("SD", "Arquivo escrito");
+    //ESP_LOGI("SD", "Arquivo escrito");
+    */
 }
 
 // GEPETO LEU
@@ -64,7 +97,7 @@ void read_file(const char *path) {
 void sd_config(void) {
 
     // INICIALIZACAO DA QUEUE
-    ecg_buffer_queue = xQueueCreate(5, sizeof(uint16_t) * ECG_BUFFER_SIZE);
+    ecg_buffer_queue = xQueueCreate(3, sizeof(int16_t) * ECG_BUFFER_SIZE);
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .max_files = 5,
@@ -74,7 +107,7 @@ void sd_config(void) {
     ESP_LOGI("SD", "Inicializando SD Card");
 
     sdmmc_host_t sd_host = SDSPI_HOST_DEFAULT();
-    sd_host.max_freq_khz = 5000;
+    sd_host.max_freq_khz = 400;
 
     spi_bus_config_t bus_conf = {
         .mosi_io_num = SD_MOSI_PORT,
@@ -104,46 +137,72 @@ void sd_config(void) {
 
     sdmmc_card_print_info(stdout, sd_card);
 
-    /*
-    sdspi_dev_handle_t sd_handle;
-    if(sdspi_host_init_device(&slot_config, &sd_handle) != ESP_OK) {
-        ESP_LOGE("SD", "Falha ao inicializar dispositivo SD SPI:");
-        spi_bus_free(sd_host.slot);
-        return;
+    ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
+}
+
+uint8_t get_next_file_number(void) {
+    char test_filename[64];
+    int file_num = 1;
+    FILE *test_file;
+    
+    // Procurar o próximo número disponível
+    while(file_num < 1000) {  // Limite de segurança
+        snprintf(test_filename, sizeof(test_filename), MOUNT_POINT"/ecg_%d.bin", file_num);
+        
+        test_file = fopen(test_filename, "r");
+        if(test_file == NULL) {
+            // Arquivo não existe, usar este número
+            ESP_LOGI("SD", "Próximo arquivo disponível: ecg_%d.bin", file_num);
+            return file_num;
+        } else {
+            fclose(test_file);
+            file_num++;
+        }
     }
-
-    sd_host.slot = sd_handle;
-
-    sd_card = malloc(sizeof(sdmmc_card_t));
-    if(sd_card == NULL) {
-        ESP_LOGE("SD", "Falha ao alocar memória para sd_card");
-        sdspi_host_deinit();
-        spi_bus_free(sd_host.slot);
-        return;
-    }
-
-    if(sdmmc_card_init(&sd_host, sd_card) != ESP_OK) {
-        ESP_LOGE("SD", "Falha ao inicializar cartão SD");
-        free(sd_card);
-        sdspi_host_deinit();
-        spi_bus_free(sd_host.slot);
-        return;
-    }
-
-    */
-   ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
+    
+    ESP_LOGW("SD", "Muitos arquivos! Usando ecg_1.bin (sobrescrever)");
+    return 1;
 }
 
 void sd_task(void *pvParameters) {
     ESP_LOGI("SD", "INICIANDO TASK SD");
-    uint16_t temp[ECG_BUFFER_SIZE];
-    char *filename = MOUNT_POINT"/ecggg.bin";
 
+    int16_t temp[ECG_BUFFER_SIZE];
+    uint8_t file_number = get_next_file_number();
+    char filename[64];
+    snprintf(filename, sizeof(filename), MOUNT_POINT"/ecg_%d.bin", file_number);
+    ESP_LOGI("SD", "Gravando em: %s", filename);
+    
     while(1) {
         if(xQueueReceive(ecg_buffer_queue, temp, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI("SD", "DADOS RECEBIDOS DA FILA");
+            
+            // Verificar se os valores estão em uma faixa razoável antes de gravar
+            bool valid_data = true;
+            for(int i = 0; i < ECG_BUFFER_SIZE; i++) {
+                if(temp[i] < -5000 || temp[i] > 32000) {
+                    ESP_LOGW("SD", "Valor suspeito detectado: %d", temp[i]);
+                    valid_data = false;
+                    break;
+                }
+            }
+            
+            if(valid_data) {
+                write_file(filename, temp);
+            } else {
+                ESP_LOGE("SD", "Buffer com dados inválidos descartado");
+            }
+        }
+    }
+
+    /*
+    while(1) {
+        if(xQueueReceive(ecg_buffer_queue, temp, pdTICKS_TO_MS(500)) == pdTRUE) {
+            ESP_LOGI("SD", "DADOS RECEBIDOS DA FILA");
+            
             write_file(filename, temp);
             //read_file(filename);  //TESTE DE LEITURA
-        }      
+        }
     }
+    */
 }
