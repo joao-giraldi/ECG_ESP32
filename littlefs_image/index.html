@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 - Olá Mundo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #666;
+            font-size: 18px;
+        }
+        .esp-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 Olá Mundo! 🌟</h1>
+        <p>Contador: <span id="counter" style="color: #22d3ee; font-weight: bold; font-size: 24px;">0</span></p>
+        <p>Esta página está sendo servida pelo <strong>ESP32</strong>!</p>
+        
+        <div class="esp-info">
+            <h3>📡 Informações do Sistema</h3>
+            <p><strong>IP:</strong> 192.168.4.1</p>
+            <p><strong>Servidor:</strong> ESP32 HTTP Server</p>
+            <p><strong>Sistema de Arquivos:</strong> SPIFFS</p>
+        </div>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #999;">
+            Conecte-se ao Wi-Fi do ESP32 para acessar esta página
+        </p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
