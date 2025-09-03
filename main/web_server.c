@@ -8,14 +8,53 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "esp_littlefs.h"
+
 static const char *TAG = "http";
 
 // LÊ DE /spiffs/teste (SPIFFS)
-#define BASE_DIR "/sdcard/leitura"
+#define BASE_DIR            "/sdcard/leitura"
+#define WEB_MOUNT_POINT     "/littlefs_image"
 
 static bool contains_dotdot(const char *s){ return strstr(s, "..") != NULL; }
 
-// ---- UI: HTML + CSS + JS (mobile) ----
+static esp_err_t init_littlefs(void) {
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = WEB_MOUNT_POINT,
+        .partition_label = "graphics",
+        .format_if_mount_failed = false,
+        .dont_mount = false,
+    };
+
+    esp_err_t ret = esp_vfs_littlefs_register(&conf);
+
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "Falha ao inicializar o LittleFS (%s)", esp_err_to_name(ret));
+        return ret;
+    }
+
+    size_t total = 0, used = 0;
+    ret = esp_littlefs_info("graphics", &total, &used);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "LittleFS: %d kB total, %d kB used", total/1024, used/1024);
+    }
+    return ESP_OK;
+}
+
+static const char* get_content_type(const char* path) {
+    const char* ext = strrchr(path, '.');
+    if (!ext) return "text/plain";
+    
+    if (strcasecmp(ext, ".html") == 0) return "text/html; charset=utf-8";
+    if (strcasecmp(ext, ".css") == 0) return "text/css";
+    if (strcasecmp(ext, ".js") == 0) return "application/javascript";
+    if (strcasecmp(ext, ".json") == 0) return "application/json";
+    if (strcasecmp(ext, ".ico") == 0) return "image/x-icon";
+    
+    return "text/plain";
+}
+
+// ---- HTML EMBBEDED ----
 static const char INDEX_HTML[] =
 "<!doctype html><html lang='pt-br'><head>"
 "<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />"
@@ -79,6 +118,73 @@ static const char INDEX_HTML[] =
 "async function loadAndPlot(){const name=sel.value;if(!name||name.startsWith('(')) return;meta.textContent='Baixando…';stat.textContent='';const t0=performance.now();const r=await fetch(`/api/file?name=${encodeURIComponent(name)}`);if(!r.ok){meta.textContent='Erro ao baixar arquivo';return;}const buf=await r.arrayBuffer();const t1=performance.now();let data=parseBuffer(buf);const fs=parseFloat(fsIn.value)||500;let min=Infinity,max=-Infinity;for(let i=0;i<data.length;i++){const v=data[i];if(v<min)min=v;if(v>max)max=v;}const dec=decimate(data);const t2=performance.now();draw(dec,{fs,min,max});meta.textContent=`${name} — ${prettyBytes(buf.byteLength)}`;stat.textContent=`download ${(t1-t0).toFixed(0)} ms · parse/plot ${(t2-t1).toFixed(0)} ms · pts ${data.length}→${dec.length}`;}"
 "btn.addEventListener('click', loadAndPlot);(async()=>{await listFiles();draw([],{fs:1,min:0,max:0});})();"
 "</script></body></html>";
+
+static esp_err_t static_handler(httpd_req_t *req) {
+    char filepath[1024];
+    
+    // Se for root, servir index.html
+    if (strcmp(req->uri, "/") == 0) {
+        snprintf(filepath, sizeof(filepath), "%s/index.html", WEB_MOUNT_POINT);
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s%s", WEB_MOUNT_POINT, req->uri);
+    }
+    
+    // Verificar se o arquivo existe
+    struct stat file_stat;
+    if (stat(filepath, &file_stat) == -1) {
+        ESP_LOGW(TAG, "File not found: %s, using fallback", filepath);
+        // Fallback para HTML embutido
+        if (strcmp(req->uri, "/") == 0) {
+            httpd_resp_set_type(req, "text/html; charset=utf-8");
+            return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
+        }
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File not found");
+        return ESP_FAIL;
+    }
+
+    FILE *fd = fopen(filepath, "r");
+    if (!fd) {
+        ESP_LOGE(TAG, "Failed to read file: %s", filepath);
+        // Fallback para HTML embutido se for a página principal
+        if (strcmp(req->uri, "/") == 0) {
+            httpd_resp_set_type(req, "text/html; charset=utf-8");
+            return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
+        }
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read file");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Serving file: %s (%ld bytes)", filepath, file_stat.st_size);
+    httpd_resp_set_type(req, get_content_type(filepath));
+
+    // Enviar arquivo em chunks
+    char *chunk = malloc(1024);
+    if (!chunk) {
+        fclose(fd);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
+        return ESP_FAIL;
+    }
+
+    size_t chunksize;
+    do {
+        chunksize = fread(chunk, 1, 1024, fd);
+        if (chunksize > 0) {
+            if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {
+                fclose(fd);
+                free(chunk);
+                ESP_LOGE(TAG, "File sending failed!");
+                httpd_resp_sendstr_chunk(req, NULL);
+                return ESP_FAIL;
+            }
+        }
+    } while (chunksize != 0);
+
+    free(chunk);
+    fclose(fd);
+    httpd_resp_send_chunk(req, NULL, 0);
+    ESP_LOGI(TAG, "File sent successfully");
+    return ESP_OK;
+}
 
 // ---- Handlers ----
 static esp_err_t root_handler(httpd_req_t *req){
@@ -168,6 +274,12 @@ static esp_err_t api_file_handler(httpd_req_t *req){
 }
 
 httpd_handle_t start_webserver(void){
+
+    esp_err_t ret = init_littlefs();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "LittleFS failed to initialize, using embedded HTML");
+    }
+
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.lru_purge_enable = true;
     cfg.server_port = 80;
@@ -178,16 +290,26 @@ httpd_handle_t start_webserver(void){
         ESP_LOGE(TAG, "httpd_start failed");
         return NULL;
     }
-    httpd_uri_t root  = { .uri="/",         .method=HTTP_GET, .handler=root_handler  };
+    //httpd_uri_t root  = { .uri="/",         .method=HTTP_GET, .handler=root_handler  };
     httpd_uri_t files = { .uri="/api/files", .method=HTTP_GET, .handler=api_files_handler };
     httpd_uri_t file  = { .uri="/api/file",  .method=HTTP_GET, .handler=api_file_handler  };
-    httpd_register_uri_handler(server, &root);
+
+    httpd_uri_t static_files = {
+        .uri = "/*",
+        .method=HTTP_GET,
+        .handler=static_handler
+    };
+
+    //httpd_register_uri_handler(server, &root);
     httpd_register_uri_handler(server, &files);
     httpd_register_uri_handler(server, &file);
+    httpd_register_uri_handler(server, &static_files);
+
     ESP_LOGI(TAG, "HTTP pronto em http://192.168.4.1");
     return server;
 }
 
 void stop_webserver(httpd_handle_t server){
     if (server) httpd_stop(server);
+    esp_vfs_littlefs_unregister("graphics");
 }

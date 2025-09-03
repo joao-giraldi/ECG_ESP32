@@ -2,4 +2,4 @@ build/
 .vscode/
 .devcontainer/
 *.py
-*.csv
+dados_ecg_10s.csv

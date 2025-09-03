@@ -22,14 +22,20 @@ void app_main(void) {
     start_webserver();  
 
     ESP_ERROR_CHECK(config_ports());
-    ESP_ERROR_CHECK(ecg_config());
+    //ESP_ERROR_CHECK(ecg_config());
 
-    sd_config();
+    //sd_config();
     
     vTaskDelay(pdMS_TO_TICKS(1000));
     
-    xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, NULL, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
+    //xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, NULL, APP_CPU_NUM);
+    //xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
 
     // printf("Tasks criadas com sucesso!");
+
+    while (1)
+    {
+        vTaskDelay(10);
+    }
+    
 }
