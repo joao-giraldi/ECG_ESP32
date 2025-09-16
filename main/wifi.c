@@ -28,7 +28,8 @@ void wifi_init_ap(const char *ssid, const char *pass, uint8_t channel, uint8_t m
     // 2) Stack de rede + loop de eventos
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap(); // cria a interface de AP (DHCP server por padrão)
+    esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();
+    esp_netif_set_hostname(ap_netif, "ecg");  // mantém tudo coerente com o mDNS
 
     // 3) Wi-Fi driver
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
