@@ -1,0 +1,274 @@
+/* ===================== */
+/*  Design tokens        */
+/* ===================== */
+:root {
+  --bg: #0b0b0d;
+  --fg: #f4f4f5;
+  --muted: #9ca3af;
+  --acc: #22d3ee;
+
+  --surface: #141418;
+  --surface-border: #1f1f24;
+  --input-bg: #0f0f13;
+  --input-border: #24242b;
+
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ===================== */
+/*  Base                 */
+/* ===================== */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+
+/* ===================== */
+/*  Layout               */
+/* ===================== */
+.wrap {
+  width: min(1400px, 96vw);
+  margin: 24px auto;
+  padding: 0 8px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 18px;
+  margin-right: auto;
+}
+
+.pill {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ===================== */
+/*  Controles / Form     */
+/* ===================== */
+.controls {
+  padding: 12px 16px 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(180px, 1fr)
+  ); /* mobile-first */
+  align-items: end;
+}
+
+.controls label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.controls input,
+.controls select,
+.btn {
+  width: 100%;
+  height: 40px; /* altura padronizada */
+  padding: 10px 12px;
+  background: var(--input-bg);
+  color: var(--fg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  outline: none;
+  line-height: 1;
+}
+
+.controls input:focus-visible,
+.controls select:focus-visible,
+.btn:focus-visible {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
+}
+
+/* remove setinhas do type=number (WebKit) */
+.controls input[type="number"]::-webkit-outer-spin-button,
+.controls input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.controls input[type="number"] {
+  appearance: textfield;
+}
+
+/* Botão */
+.btn {
+  appearance: none;
+  border: 1px solid #2b2b33;
+  background: #111116;
+  cursor: pointer;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn-wrap {
+  align-self: end;
+}
+
+/* ===================== */
+/*  Canvas + Overlays    */
+/* ===================== */
+.canvasBox {
+  position: relative; /* necessário para overlays */
+  padding: 8px 16px 16px;
+}
+
+#chart {
+  display: block;
+  width: 100%;
+  height: 60vh;
+  background: #0e0e12;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+}
+
+#chart.drop-ready {
+  outline: 2px dashed #3b82f6;
+  outline-offset: 6px;
+}
+
+/* Scroller horizontal (eixo X) */
+.x-scroll {
+  width: 100%;
+  margin-top: 8px;
+  appearance: none;
+  height: 6px;
+  background: var(--surface-border);
+  border-radius: 999px;
+  outline: none;
+}
+.x-scroll::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+.x-scroll::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+
+/* Overlay do zoom: DENTRO do gráfico, canto superior ESQUERDO */
+.zoom-overlay {
+  position: absolute;
+  top: 12px;
+  right: 20px; /* -> canto superior DIREITO do gráfico */
+  left: auto; /* garante que não fica preso à esquerda */
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: rgba(20, 20, 24, 0.85);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.zoom-overlay label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.zoom-overlay input[type="range"] {
+  width: 160px;
+  height: 6px;
+  appearance: none;
+  background: var(--surface-border);
+  border-radius: 999px;
+  outline: none;
+}
+.zoom-overlay input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+.zoom-overlay input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+}
+
+/* ===================== */
+/*  Footer               */
+/* ===================== */
+.footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--surface-border);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ===================== */
+/*  Desktop tweaks       */
+/* ===================== */
+@media (min-width: 900px) {
+  .controls {
+    grid-template-columns: 2fr 1fr 1fr 1fr auto; /* arquivo, fs, fmt, ganho, botão */
+  }
+  #chart {
+    height: 60vh;
+  }
+}
+
+/* ===================== */
+/*  Acessibilidade       */
+/* ===================== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
+  .btn:active {
+    transform: none;
+  }
+}

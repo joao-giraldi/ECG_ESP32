@@ -1,61 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 - Olá Mundo</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        p {
-            color: #666;
-            font-size: 18px;
-        }
-        .esp-info {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #e8f4f8;
-            border-radius: 5px;
-            color: #2c3e50;
-        }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ECG Viewer</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
 </head>
+
 <body>
-    <div class="container">
-        <h1>🌟 Olá Mundo! 🌟</h1>
-        <p>Contador: <span id="counter" style="color: #22d3ee; font-weight: bold; font-size: 24px;">0</span></p>
-        <p>Esta página está sendo servida pelo <strong>ESP32</strong>!</p>
-        
-        <div class="esp-info">
-            <h3>📡 Informações do Sistema</h3>
-            <p><strong>IP:</strong> 192.168.4.1</p>
-            <p><strong>Servidor:</strong> ESP32 HTTP Server</p>
-            <p><strong>Sistema de Arquivos:</strong> SPIFFS</p>
+    <div class="wrap">
+        <div class="card">
+            <div class="head">
+                <div class="title">ECG — Visualizador</div>
+                <div class="pill">Acesse <b>192.168.4.1</b> conectado ao Wi-Fi do ESP</div>
+            </div>
+
+            <!-- CONTROLES: 5 itens diretos no grid -->
+            <div class="controls">
+                <div class="ctrl">
+                    <label for="fileSel">Arquivo</label>
+                    <select id="fileSel"></select>
+                </div>
+
+                <div class="ctrl">
+                    <label for="fs">Fs (Hz)</label>
+                    <input id="fs" type="number" inputmode="numeric" value="500" min="1" />
+                </div>
+
+                <div class="ctrl">
+                    <label for="fmt">Formato</label>
+                    <select id="fmt">
+                        <option value="i16le" selected>Int16 LE</option>
+                        <option value="u16le">Uint16 LE</option>
+                        <option value="i8">Int8</option>
+                        <option value="u8">Uint8</option>
+                    </select>
+                </div>
+
+                <div class="ctrl">
+                    <label for="gain">Ganho (LSB→mV)</label>
+                    <input id="gain" type="number" step="0.01" value="1.0" />
+                </div>
+
+                <div class="ctrl btn-wrap">
+                    <label>&nbsp;</label>
+                    <button id="btnLoad" class="btn">Carregar &amp; Desenhar</button>
+                </div>
+
+                <!-- dentro de .controls, ao lado do botão Carregar -->
+                <!-- <div class="ctrl btn-wrap">
+                    <label>&nbsp;</label>
+                    <button id="btnLocal" class="btn" type="button">Usar .bin local</button>
+                    <input id="localFile" type="file" accept=".bin" hidden />
+                </div> -->
+
+            </div>
+
+            <div class="canvasBox">
+                <canvas id="chart"></canvas>
+                <input id="xScroll" class="x-scroll" type="range" min="0" max="1000" value="0" />
+
+                <!-- overlay de zoom dentro do gráfico -->
+                <div class="zoom-overlay">
+                    <label for="zoomCtrl">Zoom</label>
+                    <input id="zoomCtrl" type="range" min="0" max="1000" value="300" />
+                </div>
+            </div>
+
         </div>
-        
-        <p style="margin-top: 30px; font-size: 14px; color: #999;">
-            Conecte-se ao Wi-Fi do ESP32 para acessar esta página
-        </p>
+
+
+        <div class="footer">
+            <span id="meta">–</span>
+            <span id="stat"></span>
+        </div>
     </div>
-    <script src="script.js"></script>
+    </div>
 </body>
+
 </html>
