@@ -3,12 +3,13 @@
 #include <freertos/task.h>
 #include <string.h>
 
-#include "ecg.h"
-#include "microSD.h"
 #include "ports.h"
 
+#include "ecg.h"
+#include "microSD.h"
 #include "wifi.h"
 #include "web_server.h"
+#include "lcd.h"
 
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM     PRO_CPU_NUM
@@ -25,6 +26,8 @@ void app_main(void) {
     //ESP_ERROR_CHECK(ecg_config());
 
     //sd_config();
+
+    ESP_ERROR_CHECK(lcd_config());
     
     vTaskDelay(pdMS_TO_TICKS(1000));
     
