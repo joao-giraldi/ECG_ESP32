@@ -1,6 +1,3 @@
-/* ===================== */
-/*  Design tokens        */
-/* ===================== */
 :root {
   --bg: #0b0b0d;
   --fg: #f4f4f5;
@@ -17,9 +14,6 @@
   --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* ===================== */
-/*  Base                 */
-/* ===================== */
 * {
   box-sizing: border-box;
 }
@@ -34,9 +28,6 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
 }
 
-/* ===================== */
-/*  Layout               */
-/* ===================== */
 .wrap {
   width: min(1400px, 96vw);
   margin: 24px auto;
@@ -70,17 +61,11 @@ body {
   color: var(--muted);
 }
 
-/* ===================== */
-/*  Controles / Form     */
-/* ===================== */
 .controls {
   padding: 12px 16px 16px;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(180px, 1fr)
-  ); /* mobile-first */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   align-items: end;
 }
 
@@ -95,7 +80,7 @@ body {
 .controls select,
 .btn {
   width: 100%;
-  height: 40px; /* altura padronizada */
+  height: 40px;
   padding: 10px 12px;
   background: var(--input-bg);
   color: var(--fg);
@@ -112,7 +97,6 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
 }
 
-/* remove setinhas do type=number (WebKit) */
 .controls input[type="number"]::-webkit-outer-spin-button,
 .controls input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -122,7 +106,6 @@ body {
   appearance: textfield;
 }
 
-/* Botão */
 .btn {
   appearance: none;
   border: 1px solid #2b2b33;
@@ -136,11 +119,8 @@ body {
   align-self: end;
 }
 
-/* ===================== */
-/*  Canvas + Overlays    */
-/* ===================== */
 .canvasBox {
-  position: relative; /* necessário para overlays */
+  position: relative;
   padding: 8px 16px 16px;
 }
 
@@ -158,7 +138,6 @@ body {
   outline-offset: 6px;
 }
 
-/* Scroller horizontal (eixo X) */
 .x-scroll {
   width: 100%;
   margin-top: 8px;
@@ -186,12 +165,11 @@ body {
   cursor: pointer;
 }
 
-/* Overlay do zoom: DENTRO do gráfico, canto superior ESQUERDO */
 .zoom-overlay {
   position: absolute;
   top: 12px;
-  right: 20px; /* -> canto superior DIREITO do gráfico */
-  left: auto; /* garante que não fica preso à esquerda */
+  right: 20px;
+  left: auto;
   z-index: 2;
 
   display: flex;
@@ -236,9 +214,6 @@ body {
   cursor: pointer;
 }
 
-/* ===================== */
-/*  Footer               */
-/* ===================== */
 .footer {
   padding: 10px 16px;
   border-top: 1px solid var(--surface-border);
@@ -249,21 +224,15 @@ body {
   color: var(--muted);
 }
 
-/* ===================== */
-/*  Desktop tweaks       */
-/* ===================== */
 @media (min-width: 900px) {
   .controls {
-    grid-template-columns: 2fr 1fr 1fr 1fr auto; /* arquivo, fs, fmt, ganho, botão */
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
   }
   #chart {
     height: 60vh;
   }
 }
 
-/* ===================== */
-/*  Acessibilidade       */
-/* ===================== */
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto;
