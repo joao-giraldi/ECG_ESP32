@@ -68,22 +68,42 @@ function prettyBytes(b) {
   }
   return b.toFixed(i ? 1 : 0) + " " + u[i];
 }
+
+// === LISTAGEM DO SD COM TRATAMENTO DE ERRO ===
 async function listFiles() {
-  const r = await fetch("/api/files");
-  const js = await r.json();
-  sel.innerHTML = "";
-  js.forEach((f) => {
+  try {
+    const r = await fetch("/api/files");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const js = await r.json();
+    console.log(js)
+
+    sel.innerHTML = "";
+    if (!Array.isArray(js) || js.length === 0) {
+      const o = document.createElement("option");
+      o.text = "(nenhum .bin encontrado)";
+      o.value = "";
+      sel.appendChild(o);
+      btn.disabled = true;
+      return [];
+    }
+
+    for (const f of js) {
+      const o = document.createElement("option");
+      o.value = f.name;
+      o.text = `${f.name} (${prettyBytes(f.size)})`;
+      sel.appendChild(o);
+    }
+    btn.disabled = false;
+    return js;
+  } catch (e) {
+    sel.innerHTML = "";
     const o = document.createElement("option");
-    o.value = f.name;
-    o.text = `${f.name} (${prettyBytes(f.size)})`;
+    o.text = "(falha ao listar)";
+    o.value = "";
     sel.appendChild(o);
-  });
-  if (js.length === 0) {
-    const o = document.createElement("option");
-    o.text = "(nenhum .bin encontrado)";
-    sel.appendChild(o);
+    btn.disabled = true;
+    return [];
   }
-  return js;
 }
 
 function parseBuffer(buf) {
@@ -362,6 +382,7 @@ async function loadAndPlot() {
 }
 btn.addEventListener("click", loadAndPlot);
 
+// --- (opcional) entrada local e drag&drop, se existir no HTML ---
 const btnLocal = document.getElementById("btnLocal");
 const localInput = document.getElementById("localFile");
 btnLocal?.addEventListener("click", () => localInput?.click());

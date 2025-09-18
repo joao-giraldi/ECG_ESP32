@@ -4,19 +4,29 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <strings.h>   // strcasecmp
+#include <strings.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "esp_littlefs.h"
 
 static const char *TAG = "http";
 
-// LÊ DE /spiffs/teste (SPIFFS)
 #define BASE_DIR            "/sdcard/leitura"
 #define WEB_MOUNT_POINT     "/littlefs_image"
 
-static bool contains_dotdot(const char *s){ return strstr(s, "..") != NULL; }
+static bool contains_dotdot(const char *s){ return s && strstr(s, "..") != NULL; }
+
+static bool is_safe_name(const char *s){
+    if (!s || !*s) return false;
+    for (const char *p = s; *p; ++p) {
+        unsigned char c = (unsigned char)*p;
+        if (!(isalnum(c) || c=='_' || c=='-' || c=='.')) return false;
+    }
+    if (contains_dotdot(s)) return false;
+    return true;
+}
 
 static esp_err_t init_littlefs(void) {
     esp_vfs_littlefs_conf_t conf = {
@@ -36,7 +46,7 @@ static esp_err_t init_littlefs(void) {
     size_t total = 0, used = 0;
     ret = esp_littlefs_info("graphics", &total, &used);
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "LittleFS: %d kB total, %d kB used", total/1024, used/1024);
+        ESP_LOGI(TAG, "LittleFS: %d kB total, %d kB used", (int)(total/1024), (int)(used/1024));
     }
     return ESP_OK;
 }
@@ -44,17 +54,19 @@ static esp_err_t init_littlefs(void) {
 static const char* get_content_type(const char* path) {
     const char* ext = strrchr(path, '.');
     if (!ext) return "text/plain";
-    
+
     if (strcasecmp(ext, ".html") == 0) return "text/html; charset=utf-8";
-    if (strcasecmp(ext, ".css") == 0) return "text/css";
-    if (strcasecmp(ext, ".js") == 0) return "application/javascript";
+    if (strcasecmp(ext, ".css")  == 0) return "text/css";
+    if (strcasecmp(ext, ".js")   == 0) return "application/javascript";
     if (strcasecmp(ext, ".json") == 0) return "application/json";
-    if (strcasecmp(ext, ".ico") == 0) return "image/x-icon";
-    
+    if (strcasecmp(ext, ".ico")  == 0) return "image/x-icon";
+    if (strcasecmp(ext, ".png")  == 0) return "image/png";
+    if (strcasecmp(ext, ".jpg")  == 0 || strcasecmp(ext, ".jpeg") == 0) return "image/jpeg";
+    if (strcasecmp(ext, ".svg")  == 0) return "image/svg+xml";
+
     return "text/plain";
 }
 
-// ---- HTML EMBBEDED ----
 static const char INDEX_HTML[] =
 "<!doctype html><html lang='pt-br'><head>"
 "<meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />"
@@ -73,7 +85,7 @@ static const char INDEX_HTML[] =
 ".controls .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}"
 ".btn{appearance:none;border:1px solid #2b2b33;background:#111116;color:var(--fg);padding:10px 14px;border-radius:10px}"
 ".btn:active{transform:scale(.98)}"
-".canvasBox{padding:8px 8px 12px}"
+".canvasBox{padding:8px 8px 12px;position:relative}"
 "#chart{display:block;width:100%;height:42vh;background:#0e0e12;border:1px solid #1f1f24;border-radius:12px}"
 ".footer{padding:10px 16px;border-top:1px solid #1f1f24;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}"
 "@media (min-width:640px){.controls{grid-template-columns:2fr 1fr 1fr 1fr}.controls .row{grid-template-columns:1fr 1fr 1fr}}"
@@ -105,7 +117,7 @@ static const char INDEX_HTML[] =
 "const sel=document.getElementById('fileSel');const fsIn=document.getElementById('fs');const fmtSel=document.getElementById('fmt');const gainIn=document.getElementById('gain');const meta=document.getElementById('meta');const stat=document.getElementById('stat');const btn=document.getElementById('btnLoad');const cvs=document.getElementById('chart');const ctx=cvs.getContext('2d');let W=0,H=0;const DPR=window.devicePixelRatio||1;"
 "function resize(){const r=cvs.getBoundingClientRect();W=Math.floor(r.width*DPR);H=Math.floor(r.height*DPR);cvs.width=W;cvs.height=H;}"
 "window.addEventListener('resize',()=>{resize();draw([],{fs:1,min:0,max:0});});"
-"async function listFiles(){const r=await fetch('/api/files');const js=await r.json();sel.innerHTML='';js.forEach(f=>{const o=document.createElement('option');o.value=f.name;o.text=`${f.name} (${prettyBytes(f.size)})`;sel.appendChild(o);});if(js.length===0){const o=document.createElement('option');o.text='(nenhum .bin encontrado)';sel.appendChild(o);}return js;}"
+"async function listFiles(){try{const r=await fetch('/api/files');if(!r.ok)throw 0;const js=await r.json();sel.innerHTML='';js.forEach(f=>{const o=document.createElement('option');o.value=f.name;o.text=`${f.name} (${prettyBytes(f.size)})`;sel.appendChild(o);});if(js.length===0){const o=document.createElement('option');o.text='(nenhum .bin encontrado)';sel.appendChild(o);btn.disabled=true;}else{btn.disabled=false;}return js;}catch(e){sel.innerHTML='';const o=document.createElement('option');o.text='(falha ao listar)';sel.appendChild(o);btn.disabled=true;return[];}}"
 "function prettyBytes(b){const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<u.length-1){b/=1024;i++}return b.toFixed((i?1:0))+' '+u[i];}"
 "function parseBuffer(buf){const fmt=fmtSel.value;const g=parseFloat(gainIn.value)||1;const dv=new DataView(buf);let N=buf.byteLength;let arr;"
 "if(fmt==='i16le'){N>>=1;arr=new Float32Array(N);for(let i=0;i<N;i++){arr[i]=dv.getInt16(i*2,true)*g;}}"
@@ -121,31 +133,28 @@ static const char INDEX_HTML[] =
 
 static esp_err_t static_handler(httpd_req_t *req) {
     char filepath[1024];
-    
-    // Se for root, servir index.html
+
     if (strcmp(req->uri, "/") == 0) {
         snprintf(filepath, sizeof(filepath), "%s/index.html", WEB_MOUNT_POINT);
     } else {
         snprintf(filepath, sizeof(filepath), "%s%s", WEB_MOUNT_POINT, req->uri);
     }
-    
-    // Verificar se o arquivo existe
+
     struct stat file_stat;
     if (stat(filepath, &file_stat) == -1) {
         ESP_LOGW(TAG, "File not found: %s, using fallback", filepath);
-        // Fallback para HTML embutido
         if (strcmp(req->uri, "/") == 0) {
             httpd_resp_set_type(req, "text/html; charset=utf-8");
+            httpd_resp_set_hdr(req, "Cache-Control", "no-store");
             return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
         }
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File not found");
         return ESP_FAIL;
     }
 
-    FILE *fd = fopen(filepath, "r");
+    FILE *fd = fopen(filepath, "rb");
     if (!fd) {
         ESP_LOGE(TAG, "Failed to read file: %s", filepath);
-        // Fallback para HTML embutido se for a página principal
         if (strcmp(req->uri, "/") == 0) {
             httpd_resp_set_type(req, "text/html; charset=utf-8");
             return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
@@ -154,22 +163,21 @@ static esp_err_t static_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Serving file: %s (%ld bytes)", filepath, file_stat.st_size);
+    ESP_LOGI(TAG, "Serving file: %s (%ld bytes)", filepath, (long)file_stat.st_size);
     httpd_resp_set_type(req, get_content_type(filepath));
 
-    // Enviar arquivo em chunks
-    char *chunk = malloc(1024);
+    char *chunk = (char*) malloc(1024);
     if (!chunk) {
         fclose(fd);
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
         return ESP_FAIL;
     }
 
-    size_t chunksize;
+    size_t n;
     do {
-        chunksize = fread(chunk, 1, 1024, fd);
-        if (chunksize > 0) {
-            if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {
+        n = fread(chunk, 1, 1024, fd);
+        if (n > 0) {
+            if (httpd_resp_send_chunk(req, chunk, n) != ESP_OK) {
                 fclose(fd);
                 free(chunk);
                 ESP_LOGE(TAG, "File sending failed!");
@@ -177,7 +185,7 @@ static esp_err_t static_handler(httpd_req_t *req) {
                 return ESP_FAIL;
             }
         }
-    } while (chunksize != 0);
+    } while (n != 0);
 
     free(chunk);
     fclose(fd);
@@ -186,16 +194,15 @@ static esp_err_t static_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// ---- Handlers ----
-static esp_err_t root_handler(httpd_req_t *req){
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
-}
-
 static esp_err_t api_files_handler(httpd_req_t *req){
-    DIR *dir = opendir(BASE_DIR);
     httpd_resp_set_type(req, "application/json");
-    if (!dir) return httpd_resp_sendstr(req, "[]");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+
+    DIR *dir = opendir(BASE_DIR);
+    if (!dir) {
+        ESP_LOGW(TAG, "Nao conseguiu abrir dir: %s", BASE_DIR);
+        return httpd_resp_sendstr(req, "[]");
+    }
 
     httpd_resp_sendstr_chunk(req, "[");
     struct dirent *ent;
@@ -237,7 +244,7 @@ static esp_err_t api_files_handler(httpd_req_t *req){
 }
 
 static esp_err_t api_file_handler(httpd_req_t *req){
-    char name[128]={0}, query[128]={0};
+    char name[128]={0}, query[256]={0};
     int qlen = httpd_req_get_url_query_len(req);
     if (qlen < 0 || qlen >= (int)sizeof(query))
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "query too long");
@@ -245,7 +252,7 @@ static esp_err_t api_file_handler(httpd_req_t *req){
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "missing query");
     if (httpd_query_key_value(query, "name", name, sizeof(name)) != ESP_OK)
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "missing name");
-    if (contains_dotdot(name))
+    if (!is_safe_name(name))
         return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid name");
 
     char path[512];
@@ -257,16 +264,30 @@ static esp_err_t api_file_handler(httpd_req_t *req){
     memcpy(path + blen + 1, name, nlen);
     path[blen + 1 + nlen] = '\0';
 
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "not found");
+    }
+
     FILE *f = fopen(path, "rb");
     if (!f) return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "not found");
 
     httpd_resp_set_type(req, "application/octet-stream");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
 
-    char buf[2048]; size_t n;
+    if (st.st_size > 0) {
+        char len[32];
+        snprintf(len, sizeof(len), "%ld", (long)st.st_size);
+        httpd_resp_set_hdr(req, "Content-Length", len);
+    }
+
+    char buf[2048];
+    size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
         if (httpd_resp_send_chunk(req, buf, n) != ESP_OK) {
-            fclose(f); httpd_resp_send_chunk(req, NULL, 0); return ESP_FAIL;
+            fclose(f);
+            httpd_resp_send_chunk(req, NULL, 0);
+            return ESP_FAIL;
         }
     }
     fclose(f);
@@ -274,10 +295,11 @@ static esp_err_t api_file_handler(httpd_req_t *req){
 }
 
 httpd_handle_t start_webserver(void){
+    mkdir(BASE_DIR, 0777);
 
     esp_err_t ret = init_littlefs();
     if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "LittleFS failed to initialize, using embedded HTML");
+        ESP_LOGW(TAG, "LittleFS falhou, usando HTML embarcado no fallback");
     }
 
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
@@ -290,19 +312,17 @@ httpd_handle_t start_webserver(void){
         ESP_LOGE(TAG, "httpd_start failed");
         return NULL;
     }
-    //httpd_uri_t root  = { .uri="/",         .method=HTTP_GET, .handler=root_handler  };
+
     httpd_uri_t files = { .uri="/api/files", .method=HTTP_GET, .handler=api_files_handler };
     httpd_uri_t file  = { .uri="/api/file",  .method=HTTP_GET, .handler=api_file_handler  };
+    httpd_register_uri_handler(server, &files);
+    httpd_register_uri_handler(server, &file);
 
     httpd_uri_t static_files = {
         .uri = "/*",
         .method=HTTP_GET,
         .handler=static_handler
     };
-
-    //httpd_register_uri_handler(server, &root);
-    httpd_register_uri_handler(server, &files);
-    httpd_register_uri_handler(server, &file);
     httpd_register_uri_handler(server, &static_files);
 
     ESP_LOGI(TAG, "HTTP pronto em http://192.168.4.1");
@@ -312,4 +332,8 @@ httpd_handle_t start_webserver(void){
 void stop_webserver(httpd_handle_t server){
     if (server) httpd_stop(server);
     esp_vfs_littlefs_unregister("graphics");
+}
+
+void web_register_sd_api(httpd_handle_t server) {
+    (void)server;
 }

@@ -21,13 +21,16 @@ void app_main(void)
 {
     printf("=== ECG Monitor com ADS1115 ===\n");
     wifi_init_ap("ECG-ESP32", "12345678", 6, 4, false);
-    start_webserver();
-    mdns_app_start("ecg"); // -> http://ecg.local
 
     ESP_ERROR_CHECK(config_ports());
     // ESP_ERROR_CHECK(ecg_config());
 
-    // sd_config();
+    sd_config();
+    httpd_handle_t server = start_webserver();
+    web_register_sd_api(server);
+    mdns_app_start("ecg"); // -> http://ecg.local
+
+    web_register_sd_api(server);
 
     // vTaskDelay(pdMS_TO_TICKS(1000));
 
