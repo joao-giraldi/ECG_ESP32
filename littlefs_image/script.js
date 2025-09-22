@@ -69,7 +69,6 @@ function prettyBytes(b) {
   return b.toFixed(i ? 1 : 0) + " " + u[i];
 }
 
-// === LISTAGEM DO SD COM TRATAMENTO DE ERRO ===
 async function listFiles() {
   try {
     const r = await fetch("/api/files");
@@ -382,7 +381,6 @@ async function loadAndPlot() {
 }
 btn.addEventListener("click", loadAndPlot);
 
-// --- (opcional) entrada local e drag&drop, se existir no HTML ---
 const btnLocal = document.getElementById("btnLocal");
 const localInput = document.getElementById("localFile");
 btnLocal?.addEventListener("click", () => localInput?.click());
