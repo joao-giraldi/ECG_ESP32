@@ -15,7 +15,7 @@
 #define APP_CPU_NUM     PRO_CPU_NUM
 #endif
 
-extern sdmmc_card_t* sd_card;
+extern i2c_ssd1306_handle_t i2c_ssd1306;
 
 void app_main(void) {
     printf("=== ECG Monitor com ADS1115 ===\n");
@@ -40,12 +40,26 @@ void app_main(void) {
 
     while(1)
     {   
+        i2c_ssd1306_buffer_clear(&i2c_ssd1306);
+    
         ssd1306_print_str(18, 0, "Hello World!", false);
         ssd1306_print_str(18, 17, "SSD1306 OLED", false);
         ssd1306_print_str(28, 27, "with ESP32", false);
         ssd1306_print_str(38, 37, "ESP-IDF", false);
         ssd1306_print_str(28, 47, "Embedded C", false);
 
+        ssd1306_display();
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        
+        // Limpar buffer antes da próxima tela
+        i2c_ssd1306_buffer_clear(&i2c_ssd1306);
+        
+        ssd1306_print_str(18, 0, "Hello World!", false);
+        ssd1306_print_str(18, 17, "SSD1306 OLED", false);
+        ssd1306_print_str(28, 27, "with ESP32", false);
+        ssd1306_print_str(38, 37, "ESP-IDF", false);
+        ssd1306_print_str(28, 47, "MUITO FODA", false);
+        
         ssd1306_display();
         vTaskDelay(3000 / portTICK_PERIOD_MS);
     }

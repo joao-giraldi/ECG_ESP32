@@ -1,6 +1,8 @@
 #include "ssd1306.h"
 #include "ssd1306_const.h"
 
+#include "ports.h"
+
 
 uint8_t ssd1306_logo[8][64] = {
     {0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x0F, 0xEF, 0xEF, 0xEF, 0xEF, 0x0F, 0x0F, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -37,7 +39,7 @@ uint8_t ssd1306_logo[8][64] = {
      0xDF, 0xDF, 0xDF, 0xDF, 0xDF, 0xDF, 0xDF, 0xC0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 };
 
-static i2c_ssd1306_handle_t i2c_ssd1306;
+i2c_ssd1306_handle_t i2c_ssd1306;
 static i2c_master_bus_handle_t i2c_master_bus;
 
 void i2c_scanner(void)
@@ -55,9 +57,9 @@ void i2c_scanner(void)
 
 /* I2C Master */
 static const i2c_master_bus_config_t i2c_master_bus_config = {
-    .i2c_port = I2C_NUM_0,
-    .scl_io_num = GPIO_NUM_22,
-    .sda_io_num = GPIO_NUM_21,
+    .i2c_port = ADS_I2C_PORT,
+    .scl_io_num = ADS_SCL_PORT,
+    .sda_io_num = ADS_SDA_PORT,
     .clk_source = I2C_CLK_SRC_DEFAULT,
     .glitch_ignore_cnt = 7,
     .flags.enable_internal_pullup = true};
@@ -74,7 +76,7 @@ static const i2c_ssd1306_config_t i2c_ssd1306_config = {
 
 void init_ssd1306(void)
 {
-ESP_LOGI(SSD1306_TAG, "Iniciando barramento I2C...");
+    ESP_LOGI(SSD1306_TAG, "Iniciando barramento I2C...");
     
     // Primeiro: criar o barramento I2C
     esp_err_t ret = i2c_new_master_bus(&i2c_master_bus_config, &i2c_master_bus);
