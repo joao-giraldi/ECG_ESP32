@@ -15,5 +15,3 @@ dependencies:
   #   # All dependencies of `main` are public by default.
   #   public: true
   joltwallet/littlefs: ==1.20.1
-  lvgl/lvgl: ==9.2.0
-  espressif/esp_lcd_sh1107: '>=1'
