@@ -9,3 +9,6 @@ idf.py add-dependency joltwallet/littlefs==1.20.1
 
 ### LittleFS
 idf.py menuconfig -> partition -> custom partition(csv) -> partitions.csv
+
+### LCD
+https://github.com/voidlooprobotech/ESP32_ESP-IDF_Code/tree/main/15_SSD1306_ESP32
