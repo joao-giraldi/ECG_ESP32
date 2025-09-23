@@ -4,3 +4,4 @@ managed_components/
 .devcontainer/
 *.py
 dados_ecg_10s.csv
+managed_components/
