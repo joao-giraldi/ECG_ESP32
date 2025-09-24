@@ -10,24 +10,26 @@
 #include "wifi.h"
 #include "web_server.h"
 #include "mdns_app.h"
-#include "ssd1306.h"
+#include "lcd.h"
 
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM PRO_CPU_NUM
 #endif
 
-extern i2c_ssd1306_handle_t i2c_ssd1306;
-
 void app_main(void)
 {
+    static uint32_t collection_start_time = 0;
+    static uint32_t last_lcd_update = 0;
+
     printf("=== ECG Monitor com ADS1115 ===\n");
     wifi_init_ap("ECG-ESP32", "12345678", 6, 4, false);
 
     ESP_ERROR_CHECK(config_ports());
     // ESP_ERROR_CHECK(ecg_config());
-    // sd_config();
+    sd_config();
     
-    init_ssd1306();     // Inicia o painel LCD
+    //init_ssd1306();     // Inicia o painel LCD
+    ESP_ERROR_CHECK(lcd_config());
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);
@@ -42,34 +44,29 @@ void app_main(void)
 
     // printf("Tasks criadas com sucesso!");
 
-    while(1)
-    {   
-        i2c_ssd1306_buffer_clear(&i2c_ssd1306);
+    lcd_display_welcome();
+    ESP_LOGI("OI", "Welcome foi");
+    vTaskDelay(300);
+    ESP_LOGI("OI", "Network");
+    lcd_display_network_ready();
     
-        ssd1306_print_str(18, 0, "Hello World!", false);
-        ssd1306_print_str(18, 17, "SSD1306 OLED", false);
-        ssd1306_print_str(28, 27, "with ESP32", false);
-        ssd1306_print_str(38, 37, "ESP-IDF", false);
-        ssd1306_print_str(28, 47, "Embedded C", false);
-
-        ssd1306_display();
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        
-        // Limpar buffer antes da próxima tela
-        i2c_ssd1306_buffer_clear(&i2c_ssd1306);
-        
-        ssd1306_print_str(18, 0, "Hello World!", false);
-        ssd1306_print_str(18, 17, "SSD1306 OLED", false);
-        ssd1306_print_str(28, 27, "with ESP32", false);
-        ssd1306_print_str(38, 37, "ESP-IDF", false);
-        ssd1306_print_str(28, 47, "MUITO FODA", false);
-        
-        ssd1306_display();
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-    }
-
     while (1)
     {
-        vTaskDelay(10);
+        uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
+
+        if(collection_start_time == 0) {
+            collection_start_time = current_time;
+            last_lcd_update = current_time;
+
+            lcd_display_collecting(0);
+        }
+
+        if(current_time - last_lcd_update >= 1) {
+            uint32_t elapsed = current_time - collection_start_time;
+            lcd_display_collecting(elapsed);
+            last_lcd_update = current_time;
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+        //vTaskDelay(10);
     }
 }
