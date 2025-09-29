@@ -1,4 +1,18 @@
 dependencies:
+  espressif/esp_lvgl_port:
+    component_hash: b43dc04720d126cbfe14d53a84787e4c24b7bd7f15468e224c930ad3ffb32258
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4'
+    - name: lvgl/lvgl
+      registry_url: https://components.espressif.com
+      require: public
+      version: ^8
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.4.0
   espressif/mdns:
     component_hash: 3ec0af5f6bce310512e90f482388d21cc7c0e99668172d2f895356165fc6f7c5
     dependencies:
@@ -23,10 +37,19 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.20.1
+  lvgl/lvgl:
+    component_hash: 948bff879a345149b83065535bbc4a026ce9f47498a22881e432a264b9098015
+    dependencies: []
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 8.3.11
 direct_dependencies:
+- espressif/esp_lvgl_port
 - espressif/mdns
 - idf
 - joltwallet/littlefs
-manifest_hash: cfff194e7ac8acd29f8c5851779c75e420266deedf629b80ae2e9cab03883270
+- lvgl/lvgl
+manifest_hash: 8e451eb21096de7db6e833c58b3b43c5d91ce423fff9171af2ec3bb81e440b9d
 target: esp32
 version: 2.0.0

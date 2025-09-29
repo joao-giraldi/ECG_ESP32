@@ -3,8 +3,7 @@
 sdmmc_card_t* sd_card;
 const char mount_point[] = MOUNT_POINT;
 
-QueueHandle_t ecg_buffer_queue;
-
+extern QueueHandle_t ecg_buffer_queue;
 extern TaskHandle_t ecg_handler;
 
 void write_file(const char *path, int16_t *data) {
@@ -32,7 +31,7 @@ void write_file(const char *path, int16_t *data) {
         
     write_count++;
 
-    if(write_count % 5 == 0) {
+    if(write_count % 2 == 0) {
         fclose(f);
         f = NULL;  // Será reaberto na próxima escrita
         write_count = 0;
@@ -96,9 +95,8 @@ void read_file(const char *path) {
 
 void sd_config(void) {
 
-    // INICIALIZACAO DA QUEUE
-    ecg_buffer_queue = xQueueCreate(3, sizeof(int16_t) * ECG_BUFFER_SIZE);
-
+    // NOTA: A fila ECG agora é criada no main.c para evitar problemas de sincronização
+    
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .max_files = 5,
         .allocation_unit_size = 16 * 1024
@@ -142,11 +140,11 @@ void sd_config(void) {
 
 uint8_t get_next_file_number(void) {
     char test_filename[64];
-    int file_num = 1;
+    uint8_t file_num = 1;
     FILE *test_file;
     
     // Procurar o próximo número disponível
-    while(file_num < 1000) {  // Limite de segurança
+    while(file_num < 100) {  // Limite de segurança
         snprintf(test_filename, sizeof(test_filename), MOUNT_POINT"/ecg_%d.bin", file_num);
         
         test_file = fopen(test_filename, "r");

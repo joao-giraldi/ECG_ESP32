@@ -2,7 +2,7 @@ file(GLOB SOURCES "*.c")
 
 idf_component_register (
     SRCS ${SOURCES}
-    PRIV_REQUIRES ads111x i2cdev esp_idf_lib_helpers fatfs esp_wifi nvs_flash esp_netif esp_event esp_http_server esp_timer mdns
+    PRIV_REQUIRES fatfs esp_wifi nvs_flash esp_netif esp_event esp_http_server esp_timer mdns driver
     INCLUDE_DIRS ""
 )
 

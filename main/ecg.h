@@ -2,10 +2,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "driver/gpio.h"
-#include "ads111x.h"
-
 #include "esp_log.h"
 
 #include "ports.h"
@@ -14,7 +14,6 @@
 extern "C" {
 #endif
 
-#define ADS_GAIN            ADS111X_GAIN_2V048
 #define ECG_SAMPLE_RATE     100           // 100 Hz sample rate
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
 
@@ -23,9 +22,10 @@ extern "C" {
 esp_err_t ecg_config(void);
 void ecg_task(void *pvParameters);
 int16_t ecg_measure(void);
+double ecg_get_voltage(void);
 
-// A DISCUTIR...
-float raw_to_voltage(uint16_t raw);
+// Conversão de valor bruto para voltagem
+float raw_to_voltage(int16_t raw);
 
 #ifdef __cplusplus
 }

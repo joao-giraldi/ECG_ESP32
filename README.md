@@ -1,5 +1,7 @@
 # ECG_ESP32
 
+## REMOVER SUBMÓDULO!!!
+
 ### Submódulo
 git add-submodule https://github.com/dianlight/esp-idf-lib.git
 
