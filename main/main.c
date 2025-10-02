@@ -46,58 +46,36 @@ void app_main(void)
     ESP_LOGI("MAIN", "Inicializando barramento I2C...");
     i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
-        .sda_io_num = ADS_SDA_PORT,  // GPIO_NUM_21
-        .scl_io_num = ADS_SCL_PORT,  // GPIO_NUM_22
+        .sda_io_num = ADS_SDA_PORT,
+        .scl_io_num = ADS_SCL_PORT,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000,  // 400kHz
+        .master.clk_speed = 400000,
     };
+
     ESP_ERROR_CHECK(i2c_param_config(0, &i2c_conf));
     ESP_ERROR_CHECK(i2c_driver_install(0, I2C_MODE_MASTER, 0, 0, 0));
     
-    // Fazer scan do barramento I2C
-    ESP_LOGI("MAIN", "Fazendo scan do barramento I2C...");
-    for (uint8_t addr = 1; addr < 127; addr++) {
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (addr << 1) | 0, true);
-        i2c_master_stop(cmd);
-        esp_err_t ret = i2c_master_cmd_begin(0, cmd, pdMS_TO_TICKS(100));
-        i2c_cmd_link_delete(cmd);
-        if (ret == ESP_OK) {
-            ESP_LOGI("MAIN", "Dispositivo I2C encontrado no endereço: 0x%02X", addr);
-        }
-    }
-    
-    ESP_LOGW("HAHA", "ANTES");
-    test_lcd();  // LCD usa o driver I2C já inicializado
-    
-    // Aguardar estabilização do LVGL e suas tasks internas
-    ESP_LOGI("MAIN", "Aguardando estabilização do LVGL...");
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    
-    ESP_LOGW("HAHA", "DEPOIS");
+    // Imagem inicial do LCD
+    //test_lcd();
     
     esp_err_t ecg_ret = ecg_config();
     if (ecg_ret != ESP_OK) {
         ESP_LOGE("MAIN", "Falha na configuração do ECG: %s", esp_err_to_name(ecg_ret));
-        ESP_LOGE("MAIN", "Continuando sem funcionalidade ECG...");
     } else {
         ESP_LOGI("MAIN", "ECG configurado com sucesso");
     }
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);
-    mdns_app_start("ecg"); // -> http://ecg.local
+    mdns_app_start("ecg");                      // URL -> http://ecg.local
 
     web_register_sd_api(server);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
 
     xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
-
-    // printf("Tasks criadas com sucesso!");
     
     while (1)
     {

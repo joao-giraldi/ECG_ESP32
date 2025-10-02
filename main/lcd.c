@@ -17,15 +17,13 @@ void example_lvgl_demo_ui(lv_disp_t *disp)
     lv_obj_t *label = lv_label_create(scr);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
     lv_label_set_text(label, "INNOVATE YOURSELF - ASHISH SAINI");
+
     /* Size of the screen (if you use rotation 90 or 270, please set disp->driver->ver_res) */
     lv_obj_set_width(label, disp->driver->hor_res);
     lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 30);
 }
 
-void test_lcd(void) {
-    ESP_LOGI(TAG, "Configurando LCD (I2C já inicializado)...");
-
-    ESP_LOGI(TAG, "Install panel IO");
+void lcd_config(void) {
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_i2c_config_t io_config = {
         .dev_addr = EXAMPLE_I2C_HW_ADDR,
@@ -37,7 +35,6 @@ void test_lcd(void) {
 
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_HOST, &io_config, &io_handle));
 
-    ESP_LOGI(TAG, "Install SSD1306 panel driver");
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
         .bits_per_pixel = 1,
@@ -68,6 +65,7 @@ void test_lcd(void) {
         }
     };
     lv_disp_t * disp = lvgl_port_add_disp(&disp_cfg);
+
     /* Register done callback for IO */
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
@@ -79,4 +77,20 @@ void test_lcd(void) {
 
     ESP_LOGI(TAG, "Display LVGL Scroll Text");
     example_lvgl_demo_ui(disp);
+}
+
+void lcd_display_welcome(void) {
+
+}
+
+void lcd_display_collecting(uint32_t elapsed_time) {
+    
+}
+
+void lcd_display_stopped(uint32_t total_time) {
+
+}
+
+void lcd_display_network_ready(void) {
+
 }

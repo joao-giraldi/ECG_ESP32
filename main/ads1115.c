@@ -1,4 +1,4 @@
-#include "ads1115_molorius.h"
+#include "ads1115.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"

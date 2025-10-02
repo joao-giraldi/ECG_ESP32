@@ -22,10 +22,6 @@ extern "C" {
 esp_err_t ecg_config(void);
 void ecg_task(void *pvParameters);
 int16_t ecg_measure(void);
-double ecg_get_voltage(void);
-
-// Conversão de valor bruto para voltagem
-float raw_to_voltage(int16_t raw);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 #include "ecg.h"
-#include "ads1115_molorius.h"
+#include "ads1115.h"
 
 ads1115_t ads_device;
 extern QueueHandle_t ecg_buffer_queue;
@@ -7,24 +7,19 @@ extern QueueHandle_t ecg_buffer_queue;
 #define ECG_MAX_VOLTAGE     2.048f
 #define ECG_RESOLUTION      32767  // 15-bit signed (2^15 - 1)
 
-// Conversão de valor bruto para voltagem
-float raw_to_voltage(int16_t raw) {
-    return (float)raw * ECG_MAX_VOLTAGE / ECG_RESOLUTION;
-}
-
 esp_err_t ecg_config(void) {
     
     ESP_LOGI("ECG", "Configurando ADS1115 com driver Molorius...");
     
     // Configurar dispositivo ADS1115
-    ads_device = ads1115_config(ADS_I2C_PORT, 0x48);  // Porta I2C 0, endereço 0x48
+    ads_device = ads1115_config(ADS_I2C_PORT, 0x48);            // Porta I2C 0, endereço 0x48
     
     // Configurar parâmetros do ADS1115 para ECG
-    ads1115_set_mux(&ads_device, ADS1115_MUX_0_1);     // Diferencial entre pinos 0 e 1
-    ads1115_set_pga(&ads_device, ADS1115_FSR_2_048);   // Fundo de escala ±2.048V
-    ads1115_set_mode(&ads_device, ADS1115_MODE_CONTINUOUS); // Modo contínuo
-    ads1115_set_sps(&ads_device, ADS1115_SPS_64);      // 64 samples por segundo
-    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(1000)); // Timeout de 1 segundo
+    ads1115_set_mux(&ads_device, ADS1115_MUX_0_1);              // Diferencial entre pinos 0 e 1
+    ads1115_set_pga(&ads_device, ADS1115_FSR_2_048);            // Fundo de escala ±2.048V
+    ads1115_set_mode(&ads_device, ADS1115_MODE_CONTINUOUS);     // Modo contínuo
+    ads1115_set_sps(&ads_device, ADS1115_SPS_64);               // 64 samples por segundo
+    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(1000));    // Timeout de 1 segundo
     
     // Teste de leitura inicial
     ESP_LOGI("ECG", "Testando leitura do ADS1115...");
@@ -47,10 +42,6 @@ int16_t ecg_measure(void) {
         ESP_LOGW("ECG", "Leitura retornou 0 - possível erro de comunicação");
     }
     return raw;
-}
-
-double ecg_get_voltage(void) {
-    return ads1115_get_voltage(&ads_device);
 }
 
 void ecg_task(void *pvParameters) {
