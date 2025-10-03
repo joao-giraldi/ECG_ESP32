@@ -19,23 +19,42 @@
 #define APP_CPU_NUM PRO_CPU_NUM
 #endif
 
+#define DEBOUNCE_TIME_MS    200    // 200ms de debounce
+
 QueueHandle_t ecg_buffer_queue = NULL;
 
 // Variáveis para controle das interrupções
 static volatile bool start_pressed = false;
 static volatile bool stop_pressed = false;
 
+// Tempos para controle de debounce na ISR
+static volatile uint32_t last_start_time = 0;
+static volatile uint32_t last_stop_time = 0;
+
 static void gpio_isr_handler(void *arg) {
     uint32_t gpio_num = (uint32_t) arg;
+    uint32_t current_time = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
+    
     if (gpio_num == START_INT) {
-        start_pressed = true;
-        // Usar ESP_EARLY_LOGI para logs dentro da ISR
-        ESP_EARLY_LOGI("ISR", "START_INT (GPIO %d) triggered!", (int)gpio_num);
+        // Verificar debounce para START
+        if (current_time - last_start_time > DEBOUNCE_TIME_MS) {
+            start_pressed = true;
+            last_start_time = current_time;
+            ESP_EARLY_LOGI("ISR", "START_INT (GPIO %d) triggered!", (int)gpio_num);
+        } else {
+            ESP_EARLY_LOGD("ISR", "START bounce ignorado (time diff: %d ms)", 
+                           (int)(current_time - last_start_time));
+        }
     } else if (gpio_num == STOP_INT) {
-        stop_pressed = true;
-        ESP_EARLY_LOGI("ISR", "STOP_INT (GPIO %d) triggered!", (int)gpio_num);
-    } else {
-        ESP_EARLY_LOGE("ISR", "ISR chamada com GPIO desconhecido: %d", (int)gpio_num);
+        // Verificar debounce para STOP
+        if (current_time - last_stop_time > DEBOUNCE_TIME_MS) {
+            stop_pressed = true;
+            last_stop_time = current_time;
+            ESP_EARLY_LOGI("ISR", "STOP_INT (GPIO %d) triggered!", (int)gpio_num);
+        } else {
+            ESP_EARLY_LOGD("ISR", "STOP bounce ignorado (time diff: %d ms)", 
+                           (int)(current_time - last_stop_time));
+        }
     }
 }
 
