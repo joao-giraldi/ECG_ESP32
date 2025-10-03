@@ -2,6 +2,8 @@
 
 #include <freertos/FreeRTOS.h>
 #include <driver/gpio.h>
+#include "esp_intr_alloc.h"
+#include "esp_log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +21,9 @@ extern "C" {
 #define SD_MOSI_PORT        23
 #define SD_SCK_PORT         15
 #define SD_CS_PORT          5
+
+#define START_INT           32
+#define STOP_INT            33
 
 esp_err_t config_ports(void);
 

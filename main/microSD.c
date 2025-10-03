@@ -13,39 +13,6 @@ static SemaphoreHandle_t filename_mutex = NULL;
 extern QueueHandle_t ecg_buffer_queue;
 extern TaskHandle_t ecg_handler;
 
-void write_file(const char *path, int16_t *data) {
-    ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
-    static FILE *f = NULL;
-    static uint8_t write_count = 0;
-
-    if(f == NULL) {
-        f = fopen(path, "ab");
-        if(f == NULL) {
-            ESP_LOGE("SD", "Falha ao abrir o arquivo");
-            return;
-        }
-    }
-
-    fflush(f);
-
-    size_t written = fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
-    
-    if(written != ECG_BUFFER_SIZE) {
-        ESP_LOGE("SD", "Erro na escrita: %d/%d", written, ECG_BUFFER_SIZE);
-    }
-
-    fflush(f);
-        
-    write_count++;
-
-    if(write_count % 2 == 0) {
-        fclose(f);
-        f = NULL;  // Será reaberto na próxima escrita
-        write_count = 0;
-        ESP_LOGI("SD", "Arquivo fechado e reaberto para segurança");
-    }
-}
-
 void sd_config(void) { 
     // Inicializar mutex para proteção do nome do arquivo
     if (filename_mutex == NULL) {
@@ -110,6 +77,39 @@ void sd_config(void) {
     }
 
     ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
+}
+
+void write_file(const char *path, int16_t *data) {
+    ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
+    static FILE *f = NULL;
+    static uint8_t write_count = 0;
+
+    if(f == NULL) {
+        f = fopen(path, "ab");
+        if(f == NULL) {
+            ESP_LOGE("SD", "Falha ao abrir o arquivo");
+            return;
+        }
+    }
+
+    fflush(f);
+
+    size_t written = fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
+    
+    if(written != ECG_BUFFER_SIZE) {
+        ESP_LOGE("SD", "Erro na escrita: %d/%d", written, ECG_BUFFER_SIZE);
+    }
+
+    fflush(f);
+        
+    write_count++;
+
+    if(write_count % 2 == 0) {
+        fclose(f);
+        f = NULL;  // Será reaberto na próxima escrita
+        write_count = 0;
+        ESP_LOGI("SD", "Arquivo fechado e reaberto para segurança");
+    }
 }
 
 uint8_t get_next_file_number(void) {
