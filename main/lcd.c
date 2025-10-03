@@ -1,6 +1,6 @@
 #include "lcd.h"
 
-static const char *TAG = "example";
+static const char *TAG = "LCD";
 
 #define I2C_HOST  0
 
@@ -76,15 +76,86 @@ void lcd_config(void) {
     lv_disp_set_rotation(disp, LV_DISP_ROT_180);
 
     ESP_LOGI(TAG, "Display LVGL Scroll Text");
-    example_lvgl_demo_ui(disp);
+    //example_lvgl_demo_ui(disp);
+}
+
+void boot_image(void){
+    ESP_LOGI(TAG, "Imagem de Boot");
+
+    LV_IMG_DECLARE(logo_coracao);
+    
+    // Obter o display ativo
+    lv_disp_t * disp = lv_disp_get_default();
+    if (disp == NULL) {
+        ESP_LOGE(TAG, "Display não encontrado");
+        return;
+    }
+
+    // Obter a tela ativa
+    lv_obj_t * scr = lv_disp_get_scr_act(disp);
+
+    // Limpar a tela
+    lv_obj_clean(scr);
+
+    // Configuração da imagem
+    lv_obj_t * img = lv_img_create(scr);
+    lv_img_set_src(img, &logo_coracao);
+    
+    // Vamos redimensionar usando zoom
+    lv_obj_align(img, LV_ALIGN_CENTER, 0, -10);
+
+    // Adicionar título abaixo da imagem
+    lv_obj_t * title = lv_label_create(scr);
+    lv_label_set_text(title, "ECG Monitor");
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+
+    // Forçar atualização da tela
+    lv_refr_now(disp);
+    
+    ESP_LOGI(TAG, "Boot image displayed successfully");
 }
 
 void lcd_display_welcome(void) {
+    ESP_LOGI(TAG, "Exibindo tela de boas-vindas");
 
+    // Obter o display ativo
+    lv_disp_t * disp = lv_disp_get_default();
+    if (disp == NULL) {
+        ESP_LOGE(TAG, "Display não encontrado");
+        return;
+    }
+
+    // Obter a tela ativa
+    lv_obj_t * scr = lv_disp_get_scr_act(disp);
+    if (scr == NULL) {
+        ESP_LOGE(TAG, "Tela não encontrada");
+        return;
+    }
+
+    // Limpar a tela
+    lv_obj_clean(scr);
+
+    // Instrução para o usuário - usando um único label com quebra de linha
+    lv_obj_t * instruction = lv_label_create(scr);
+    if (instruction != NULL) {
+        lv_label_set_text(instruction, "Pressione o botao de coleta");
+        lv_obj_set_style_text_align(instruction, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(instruction, LV_ALIGN_CENTER, 0, 0);
+        
+        // Configurar para permitir múltiplas linhas
+        lv_label_set_long_mode(instruction, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(instruction, 120);
+    }
+
+    // Forçar atualização da tela
+    lv_refr_now(disp);
+    
+    ESP_LOGI(TAG, "Tela de boas-vindas exibida com sucesso");
 }
 
 void lcd_display_collecting(uint32_t elapsed_time) {
-    
+
 }
 
 void lcd_display_stopped(uint32_t total_time) {

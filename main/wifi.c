@@ -32,9 +32,7 @@ void wifi_init_ap(const char *ssid, const char *pass, uint8_t channel, uint8_t m
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
-
 
     wifi_config_t wifi_config = {0};
 
@@ -61,7 +59,6 @@ void wifi_init_ap(const char *ssid, const char *pass, uint8_t channel, uint8_t m
     ESP_ERROR_CHECK(esp_wifi_start());
 
     // Por padrão, a interface AP usa IP 192.168.4.1/24 e DHCP server habilitado
-    // Se quiser IP estatico custom, desabilite DHCP e set_ip_info na esp-netif aqui
 
     ESP_LOGI(TAG, "SoftAP ativo: SSID='%s' canal=%u auth=%d max_conn=%u hidden=%d",
              ssid, channel, (int)wifi_config.ap.authmode, (unsigned)max_conn, (int)wifi_config.ap.ssid_hidden);

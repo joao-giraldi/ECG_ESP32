@@ -39,7 +39,7 @@ typedef enum {
     SYSTEM_STOPPED
 } system_state_t;
 
-void test_lcd(void);
+void boot_image(void);
 void example_lvgl_demo_ui(lv_disp_t *disp);
 bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx);
 

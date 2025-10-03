@@ -25,7 +25,6 @@ void app_main(void)
     static uint32_t collection_start_time = 0;
     static uint32_t last_lcd_update = 0;
 
-    printf("=== ECG Monitor com ADS1115 ===\n");
     wifi_init_ap("ECG-ESP32", "12345678", 6, 4, false);
     
     ESP_ERROR_CHECK(config_ports());
@@ -57,7 +56,9 @@ void app_main(void)
     ESP_ERROR_CHECK(i2c_driver_install(0, I2C_MODE_MASTER, 0, 0, 0));
     
     // Imagem inicial do LCD
-    //test_lcd();
+    lcd_config();
+    //boot_image();
+    lcd_display_welcome();
     
     esp_err_t ecg_ret = ecg_config();
     if (ecg_ret != ESP_OK) {
@@ -72,10 +73,12 @@ void app_main(void)
 
     web_register_sd_api(server);
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, NULL, APP_CPU_NUM);
+    
+    vTaskDelay(pdMS_TO_TICKS(3000));
+
+    //lcd_display_welcome();
     
     while (1)
     {
