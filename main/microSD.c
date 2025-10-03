@@ -46,54 +46,7 @@ void write_file(const char *path, int16_t *data) {
     }
 }
 
-// GEPETO LEU
-void read_file(const char *path) {
-    ESP_LOGI("SD", "Abrindo arquivo para LEITURA BINÁRIA");
-    FILE *f = fopen(path, "rb");
-    if(f == NULL) {
-        ESP_LOGE("SD", "Falha ao abrir o arquivo");
-        return;
-    }
-    
-    fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    int total_samples = file_size / sizeof(uint16_t);
-    ESP_LOGI("SD", "Arquivo tem %d bytes, %d amostras ECG", (int)file_size, total_samples);
-
-    uint16_t buffer[ECG_BUFFER_SIZE];
-    int samples_read = 0;
-    
-    while(samples_read < total_samples) {
-        int samples_to_read = (total_samples - samples_read) > ECG_BUFFER_SIZE ? 
-                              ECG_BUFFER_SIZE : (total_samples - samples_read);
-        
-        size_t read_count = fread(buffer, sizeof(uint16_t), samples_to_read, f);
-        
-        if(read_count > 0) {
-            ESP_LOGI("SD", "Lidas %d amostras:", (int)read_count);
-            
-            // Imprimir as amostras (ou processar como necessário)
-            for(int i = 0; i < read_count; i++) {
-                printf("Amostra %d: %u\n", samples_read + i, buffer[i]);
-            }
-            
-            samples_read += read_count;
-        } else {
-            ESP_LOGE("SD", "Erro na leitura ou fim do arquivo");
-            break;
-        }
-    }
-    
-    fclose(f);
-    ESP_LOGI("SD", "Leitura do arquivo concluída");
-}
-
-void sd_config(void) {
-
-    // NOTA: A fila ECG agora é criada no main.c para evitar problemas de sincronização
-    
+void sd_config(void) { 
     // Inicializar mutex para proteção do nome do arquivo
     if (filename_mutex == NULL) {
         filename_mutex = xSemaphoreCreateMutex();
@@ -142,31 +95,69 @@ void sd_config(void) {
 
     sdmmc_card_print_info(stdout, sd_card);
 
+    // Teste básico de escrita para verificar se o sistema de arquivos está funcionando
+    ESP_LOGI("SD", "Testando escrita no sistema de arquivos...");
+    FILE* test_file = fopen(MOUNT_POINT"/test.txt", "w");
+    if(test_file != NULL) {
+        fprintf(test_file, "teste\n");
+        fclose(test_file);
+        ESP_LOGI("SD", "Teste de escrita OK - sistema de arquivos funcional");
+        
+        // Remover arquivo de teste
+        remove(MOUNT_POINT"/test.txt");
+    } else {
+        ESP_LOGE("SD", "Teste de escrita FALHOU: %s", strerror(errno));
+    }
+
     ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
 }
 
 uint8_t get_next_file_number(void) {
-    char test_filename[64];
-    uint8_t file_num = 1;
-    FILE *test_file;
+    static uint8_t last_used = 0;
+    const char* counter_file = MOUNT_POINT"/COUNTER.TXT";
+    FILE* f = NULL;
     
-    // Procurar o próximo número disponível
-    while(file_num < 100) {  // Limite de segurança
-        snprintf(test_filename, sizeof(test_filename), MOUNT_POINT"/ecg_%d.bin", file_num);
-        
-        test_file = fopen(test_filename, "r");
-        if(test_file == NULL) {
-            // Arquivo não existe, usar este número
-            ESP_LOGI("SD", "Próximo arquivo disponível: ecg_%d.bin", file_num);
-            return file_num;
+    // Tenta ler o último número usado
+    f = fopen(counter_file, "r");
+    if(f != NULL) {
+        int temp_value = 0;
+        if(fscanf(f, "%d", &temp_value) == 1) {
+            last_used = (uint8_t)temp_value;
         } else {
-            fclose(test_file);
-            file_num++;
+            ESP_LOGW("SD", "Erro ao ler conteúdo do arquivo contador");
+            last_used = 0;
         }
+        fclose(f);
+        ESP_LOGI("SD", "Último número usado lido do arquivo: %d", last_used);
+    } else {
+        ESP_LOGI("SD", "Arquivo contador não existe, iniciando do 1");
+        last_used = 0;
     }
     
-    ESP_LOGW("SD", "Muitos arquivos! Usando ecg_1.bin (sobrescrever)");
-    return 1;
+    // Incrementar para o próximo número (circular: 1-50)
+    last_used++;
+    if(last_used > MAX_FILES) {
+        last_used = 1;
+    }
+
+    ESP_LOGI("SD", "Tentando salvar novo número: %d", last_used);
+    
+    f = fopen(counter_file, "w");
+    if(f != NULL) {
+        if(fprintf(f, "%d\n", last_used) > 0) {
+            fflush(f);
+            fclose(f);
+            ESP_LOGI("SD", "Novo número salvo com sucesso: %d", last_used);
+        } else {
+            fclose(f);
+            ESP_LOGE("SD", "Erro ao escrever no arquivo contador");
+        }
+    } else {
+        ESP_LOGE("SD", "Erro ao abrir arquivo contador para escrita: %s (errno: %d)", strerror(errno), errno);
+    }
+    
+    ESP_LOGI("SD", "Próximo arquivo (circular): ecg_%d.bin", last_used);
+    return last_used;
 }
 
 const char* get_current_filename(void) {
@@ -200,7 +191,7 @@ void sd_task(void *pvParameters) {
     int16_t temp[ECG_BUFFER_SIZE];
     uint8_t file_number = get_next_file_number();
     char filename[64];
-    snprintf(filename, sizeof(filename), MOUNT_POINT"/ecg_%d.bin", file_number);
+    snprintf(filename, sizeof(filename), MOUNT_POINT"/ECG_%d.BIN", file_number);
     
     // Armazenar o nome do arquivo na variável global (thread-safe)
     if (filename_mutex != NULL) {

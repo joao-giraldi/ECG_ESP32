@@ -6,14 +6,16 @@
 #include "sdmmc_cmd.h"
 #include "esp_log.h"
 #include "freertos/queue.h"
-
-#include "dirent.h"
-#include "sys/stat.h"
+#include "freertos/semphr.h"
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 
 #include "ports.h"
 #include "ecg.h"
 
 #define MOUNT_POINT "/sdcard"
+#define MAX_FILES   50
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +24,6 @@ extern "C" {
 void sd_config(void);
 void sd_task(void *pvParameters);
 void write_file(const char *path, int16_t *data);
-void read_file(const char *path);
 
 uint8_t get_next_file_number(void);
 const char* get_current_filename(void);
