@@ -1,7 +1,14 @@
 #include "microSD.h"
+#include "freertos/semphr.h"
 
 sdmmc_card_t* sd_card;
 const char mount_point[] = MOUNT_POINT;
+
+// Variável global para armazenar o nome do arquivo atual
+static char current_filename[64] = "";
+
+// Mutex para proteger acesso à variável current_filename
+static SemaphoreHandle_t filename_mutex = NULL;
 
 extern QueueHandle_t ecg_buffer_queue;
 extern TaskHandle_t ecg_handler;
@@ -37,16 +44,6 @@ void write_file(const char *path, int16_t *data) {
         write_count = 0;
         ESP_LOGI("SD", "Arquivo fechado e reaberto para segurança");
     }
-
-    /*
-    if(f == NULL) {
-        ESP_LOGE("SD", "Falha ao abrir o arquivo");
-        return;
-    }
-    fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
-    fclose(f);
-    //ESP_LOGI("SD", "Arquivo escrito");
-    */
 }
 
 // GEPETO LEU
@@ -96,6 +93,16 @@ void read_file(const char *path) {
 void sd_config(void) {
 
     // NOTA: A fila ECG agora é criada no main.c para evitar problemas de sincronização
+    
+    // Inicializar mutex para proteção do nome do arquivo
+    if (filename_mutex == NULL) {
+        filename_mutex = xSemaphoreCreateMutex();
+        if (filename_mutex == NULL) {
+            ESP_LOGE("SD", "Falha ao criar mutex para nome do arquivo");
+            return;
+        }
+        ESP_LOGI("SD", "Mutex para nome do arquivo criado com sucesso");
+    }
     
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .max_files = 5,
@@ -162,6 +169,31 @@ uint8_t get_next_file_number(void) {
     return 1;
 }
 
+const char* get_current_filename(void) {
+    static char local_filename[64];
+    
+    // Se o mutex não foi inicializado, retornar string vazia
+    if (filename_mutex == NULL) {
+        ESP_LOGW("SD", "Mutex não inicializado, retornando nome vazio");
+        return "";
+    }
+    
+    // Adquirir mutex com timeout de 100ms
+    if (xSemaphoreTake(filename_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        // Copiar o nome do arquivo para variável local thread-safe
+        strncpy(local_filename, current_filename, sizeof(local_filename) - 1);
+        local_filename[sizeof(local_filename) - 1] = '\0';
+        
+        // Liberar mutex
+        xSemaphoreGive(filename_mutex);
+        
+        return local_filename;
+    } else {
+        ESP_LOGE("SD", "Timeout ao tentar acessar nome do arquivo");
+        return "timeout_error";
+    }
+}
+
 void sd_task(void *pvParameters) {
     ESP_LOGI("SD", "INICIANDO TASK SD");
 
@@ -169,6 +201,21 @@ void sd_task(void *pvParameters) {
     uint8_t file_number = get_next_file_number();
     char filename[64];
     snprintf(filename, sizeof(filename), MOUNT_POINT"/ecg_%d.bin", file_number);
+    
+    // Armazenar o nome do arquivo na variável global (thread-safe)
+    if (filename_mutex != NULL) {
+        if (xSemaphoreTake(filename_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            strncpy(current_filename, filename, sizeof(current_filename) - 1);
+            current_filename[sizeof(current_filename) - 1] = '\0';  // Garantir terminação null
+            xSemaphoreGive(filename_mutex);
+            ESP_LOGI("SD", "Nome do arquivo atualizado com sucesso: %s", filename);
+        } else {
+            ESP_LOGE("SD", "Timeout ao tentar definir nome do arquivo");
+        }
+    } else {
+        ESP_LOGE("SD", "Mutex não inicializado, não foi possível definir nome do arquivo");
+    }
+    
     ESP_LOGI("SD", "Gravando em: %s", filename);
     
     while(1) {
@@ -192,15 +239,4 @@ void sd_task(void *pvParameters) {
             }
         }
     }
-
-    /*
-    while(1) {
-        if(xQueueReceive(ecg_buffer_queue, temp, pdTICKS_TO_MS(500)) == pdTRUE) {
-            ESP_LOGI("SD", "DADOS RECEBIDOS DA FILA");
-            
-            write_file(filename, temp);
-            //read_file(filename);  //TESTE DE LEITURA
-        }
-    }
-    */
 }

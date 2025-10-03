@@ -57,9 +57,19 @@ void app_main(void)
     
     // Imagem inicial do LCD
     lcd_config();
-    //boot_image();
-    lcd_display_welcome();
-    
+    boot_image();
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+    //lcd_display_welcome();
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+    //lcd_display_network();
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+    //lcd_display_server();
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+    //lcd_display_collecting(444);
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+    //lcd_display_stopped(444, get_current_filename());
+    //vTaskDelay(pdMS_TO_TICKS(2000));
+
     esp_err_t ecg_ret = ecg_config();
     if (ecg_ret != ESP_OK) {
         ESP_LOGE("MAIN", "Falha na configuração do ECG: %s", esp_err_to_name(ecg_ret));
@@ -83,5 +93,24 @@ void app_main(void)
     while (1)
     {
         vTaskDelay(10);
+
+        uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
+
+        if(collection_start_time == 0) {
+            collection_start_time = current_time;
+            last_lcd_update = current_time;
+
+            lcd_display_collecting(0);
+        }
+
+        if(current_time - last_lcd_update >= 1) {
+            uint32_t elapsed = current_time - collection_start_time;
+            lcd_display_collecting(elapsed);
+            last_lcd_update = current_time;
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+
+        lcd_display_stopped(132, get_current_filename());
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

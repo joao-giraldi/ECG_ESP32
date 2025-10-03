@@ -9,7 +9,7 @@ extern QueueHandle_t ecg_buffer_queue;
 
 esp_err_t ecg_config(void) {
     
-    ESP_LOGI("ECG", "Configurando ADS1115 com driver Molorius...");
+    ESP_LOGI("ECG", "Configurando ADS1115");
     
     // Configurar dispositivo ADS1115
     ads_device = ads1115_config(ADS_I2C_PORT, 0x48);            // Porta I2C 0, endereço 0x48

@@ -25,6 +25,7 @@ void write_file(const char *path, int16_t *data);
 void read_file(const char *path);
 
 uint8_t get_next_file_number(void);
+const char* get_current_filename(void);
 
 #ifdef __cplusplus
 }

@@ -46,8 +46,9 @@ bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_i
 void lcd_config(void);
 void lcd_display_welcome(void);
 void lcd_display_collecting(uint32_t elapsed_time);
-void lcd_display_stopped(uint32_t total_time);
-void lcd_display_network_ready(void);
+void lcd_display_stopped(uint32_t total_time, const char* filename);
+void lcd_display_network(void);
+void lcd_display_server(void);
 
 #ifdef __cplusplus
 }
