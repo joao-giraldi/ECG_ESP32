@@ -79,36 +79,69 @@ void sd_config(void) {
     ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
 }
 
+// Variáveis estáticas para controle do arquivo
+static FILE *current_file = NULL;
+static uint8_t write_count = 0;
+
 void write_file(const char *path, int16_t *data) {
     ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
-    static FILE *f = NULL;
-    static uint8_t write_count = 0;
 
-    if(f == NULL) {
-        f = fopen(path, "ab");
-        if(f == NULL) {
+    if(current_file == NULL) {
+        current_file = fopen(path, "ab");
+        if(current_file == NULL) {
             ESP_LOGE("SD", "Falha ao abrir o arquivo");
             return;
         }
     }
 
-    fflush(f);
+    fflush(current_file);
 
-    size_t written = fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, f);
+    size_t written = fwrite(data, sizeof(uint16_t), ECG_BUFFER_SIZE, current_file);
     
     if(written != ECG_BUFFER_SIZE) {
         ESP_LOGE("SD", "Erro na escrita: %d/%d", written, ECG_BUFFER_SIZE);
     }
 
-    fflush(f);
+    fflush(current_file);
         
     write_count++;
 
     if(write_count % 2 == 0) {
-        fclose(f);
-        f = NULL;  // Será reaberto na próxima escrita
+        fclose(current_file);
+        current_file = NULL;  // Será reaberto na próxima escrita
         write_count = 0;
         ESP_LOGI("SD", "Arquivo fechado e reaberto para segurança");
+    }
+}
+
+void finalize_current_file(void) {
+    if(current_file != NULL) {
+        ESP_LOGI("SD", "Finalizando arquivo atual - forçando flush e fechamento");
+        fflush(current_file);
+        fclose(current_file);
+        current_file = NULL;
+        write_count = 0;
+        ESP_LOGI("SD", "Arquivo finalizado com sucesso");
+    } else {
+        ESP_LOGI("SD", "Nenhum arquivo aberto para finalizar");
+    }
+
+    uint8_t file_number = get_next_file_number();
+    char new_filename[64];
+    snprintf(new_filename, sizeof(new_filename), MOUNT_POINT"/ECG_%d.BIN", file_number);
+    
+    // Atualizar o nome do arquivo global (thread-safe)
+    if (filename_mutex != NULL) {
+        if (xSemaphoreTake(filename_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            strncpy(current_filename, new_filename, sizeof(current_filename) - 1);
+            current_filename[sizeof(current_filename) - 1] = '\0';
+            xSemaphoreGive(filename_mutex);
+            ESP_LOGI("SD", "Arquivo avançado para: %s", new_filename);
+        } else {
+            ESP_LOGE("SD", "Timeout ao tentar atualizar nome do arquivo");
+        }
+    } else {
+        ESP_LOGE("SD", "Mutex não inicializado");
     }
 }
 
@@ -210,7 +243,8 @@ void sd_task(void *pvParameters) {
     ESP_LOGI("SD", "Gravando em: %s", filename);
     
     while(1) {
-        if(xQueueReceive(ecg_buffer_queue, temp, portMAX_DELAY) == pdTRUE) {
+        // Usar timeout de 100ms em vez de portMAX_DELAY para permitir paradas mais rápidas
+        if(xQueueReceive(ecg_buffer_queue, temp, pdMS_TO_TICKS(100)) == pdTRUE) {
             ESP_LOGI("SD", "DADOS RECEBIDOS DA FILA");
             
             // Verificar se os valores estão em uma faixa razoável antes de gravar
@@ -224,7 +258,9 @@ void sd_task(void *pvParameters) {
             }
             
             if(valid_data) {
-                write_file(filename, temp);
+                // Usar nome de arquivo atual (thread-safe)
+                const char* current_file = get_current_filename();
+                write_file(current_file, temp);
             } else {
                 ESP_LOGE("SD", "Buffer com dados inválidos descartado");
             }

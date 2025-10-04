@@ -36,6 +36,8 @@ QueueHandle_t ecg_buffer_queue = NULL;
 static TaskHandle_t sd_task_handle = NULL;
 static TaskHandle_t ecg_task_handle = NULL;
 
+char current_filename[32];
+
 // Tempos para controle de debounce na ISR
 static volatile uint32_t last_start_time = 0;
 static volatile uint32_t last_stop_time = 0;
@@ -177,9 +179,17 @@ void app_main(void)
                     break;
                     
                 case SYSTEM_WEB_STATE:
-                    ESP_LOGI("MAIN", "Estado: WEB - Suspendendo tasks de coleta");
-                    // Suspender task de coleta
+                    ESP_LOGI("MAIN", "Estado: WEB - Finalizando coleta e suspendendo tasks");
+                    const char* temp_filename = get_current_filename();
+                    strncpy(current_filename, temp_filename, sizeof(current_filename) - 1);
+                    current_filename[sizeof(current_filename) - 1] = '\0';
+
                     vTaskSuspend(ecg_task_handle);
+                    ESP_LOGI("MAIN", "Task ECG suspensa");
+                    vTaskDelay(pdMS_TO_TICKS(500)); // 500ms para processar fila
+                    finalize_current_file();
+                    ESP_LOGI("MAIN", "Arquivo atual finalizado");
+                    
                     // Calcular e CONGELAR o tempo total de coleta
                     final_collection_time = (collection_start_time == 0) ? 0 : 
                         ((xTaskGetTickCount() * portTICK_PERIOD_MS / 1000) - collection_start_time);
@@ -187,8 +197,9 @@ void app_main(void)
                     last_screen_change = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
                     current_screen = 0; // Começar com STOPPED
                     // Mostrar primeira tela imediatamente
-                    lcd_display_stopped(final_collection_time, get_current_filename());
-                    ESP_LOGI("MAIN", "Mostrando tela inicial: STOPPED (tempo FINAL: %d s)", final_collection_time);
+                    lcd_display_stopped(final_collection_time, current_filename);
+                    ESP_LOGI("MAIN", "Coleta finalizada: %d s, próximo arquivo: %s", 
+                             final_collection_time, get_current_filename());
                     break;
             }
             
@@ -231,7 +242,7 @@ void app_main(void)
                             case 0:
                                 ESP_LOGD("MAIN", "Mostrando tela: STOPPED (tempo congelado: %d s)", final_collection_time);
                                 // Usar o tempo CONGELADO da coleta
-                                lcd_display_stopped(final_collection_time, get_current_filename());
+                                lcd_display_stopped(final_collection_time, current_filename);
                                 break;
                             case 1:
                                 ESP_LOGD("MAIN", "Mostrando tela: NETWORK");
