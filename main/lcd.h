@@ -19,28 +19,19 @@
 extern "C" {
 #endif
 
-#define EXAMPLE_LCD_PIXEL_CLOCK_HZ    (400 * 1000)
-#define EXAMPLE_PIN_NUM_SDA           ADS_SDA_PORT
-#define EXAMPLE_PIN_NUM_SCL           ADS_SCL_PORT
-#define EXAMPLE_PIN_NUM_RST           -1
-#define EXAMPLE_I2C_HW_ADDR           0x3C
+#define LCD_PIXEL_CLOCK_HZ    (400 * 1000)
+#define PIN_NUM_SDA           ADS_SDA_PORT
+#define PIN_NUM_SCL           ADS_SCL_PORT
+#define PIN_NUM_RST           -1
+#define I2C_HW_ADDR           0x3C
+#define LCD_CMD_BITS           8
+#define LCD_PARAM_BITS         8
 
-// The pixel number in horizontal and vertical
-#define EXAMPLE_LCD_H_RES              128
-#define EXAMPLE_LCD_V_RES              64
-
-// Bit number used to represent command and parameter
-#define EXAMPLE_LCD_CMD_BITS           8
-#define EXAMPLE_LCD_PARAM_BITS         8
-
-typedef enum {
-    SYSTEM_IDLE,
-    SYSTEM_COLLECTING,
-    SYSTEM_STOPPED
-} system_state_t;
+// Tamanho da tela em pixels
+#define LCD_H_RES              128
+#define LCD_V_RES              64
 
 void boot_image(void);
-void example_lvgl_demo_ui(lv_disp_t *disp);
 bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx);
 
 void lcd_config(void);

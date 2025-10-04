@@ -15,11 +15,11 @@ bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_i
 void lcd_config(void) {
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_i2c_config_t io_config = {
-        .dev_addr = EXAMPLE_I2C_HW_ADDR,
-        .control_phase_bytes = 1,               // According to SSD1306 datasheet
-        .lcd_cmd_bits = EXAMPLE_LCD_CMD_BITS,   // According to SSD1306 datasheet
-        .lcd_param_bits = EXAMPLE_LCD_CMD_BITS, // According to SSD1306 datasheet
-        .dc_bit_offset = 6,                     // According to SSD1306 datasheet
+        .dev_addr = I2C_HW_ADDR,
+        .control_phase_bytes = 1,               // De acordo com o Datasheet
+        .lcd_cmd_bits = LCD_CMD_BITS,   // De acordo com o Datasheet
+        .lcd_param_bits = LCD_CMD_BITS, // De acordo com o Datasheet
+        .dc_bit_offset = 6,                     // De acordo com o Datasheet
     };
 
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_HOST, &io_config, &io_handle));
@@ -27,7 +27,7 @@ void lcd_config(void) {
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
         .bits_per_pixel = 1,
-        .reset_gpio_num = EXAMPLE_PIN_NUM_RST,
+        .reset_gpio_num = PIN_NUM_RST,
     };
 
     ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(io_handle, &panel_config, &panel_handle));
@@ -35,17 +35,17 @@ void lcd_config(void) {
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
-    ESP_LOGI(TAG, "Initialize LVGL");
+    ESP_LOGI(TAG, "Iniciando LVGL");
     const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
     lvgl_port_init(&lvgl_cfg);
 
     const lvgl_port_display_cfg_t disp_cfg = {
         .io_handle = io_handle,
         .panel_handle = panel_handle,
-        .buffer_size = EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES,
+        .buffer_size = LCD_H_RES * LCD_V_RES,
         .double_buffer = true,
-        .hres = EXAMPLE_LCD_H_RES,
-        .vres = EXAMPLE_LCD_V_RES,
+        .hres = LCD_H_RES,
+        .vres = LCD_V_RES,
         .monochrome = true,
         .rotation = {
             .swap_xy = false,
@@ -55,17 +55,16 @@ void lcd_config(void) {
     };
     lv_disp_t * disp = lvgl_port_add_disp(&disp_cfg);
 
-    /* Register done callback for IO */
+    // Callback parar o IO
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
     };
     esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, disp);
 
-    /* Rotation of the screen */
+    // Rotation of the screen
     lv_disp_set_rotation(disp, LV_DISP_ROT_180);
 
-    ESP_LOGI(TAG, "Display LVGL Scroll Text");
-    //example_lvgl_demo_ui(disp);
+    ESP_LOGI(TAG, "Display LVGL inicializado");
 }
 
 void boot_image(void){
@@ -102,7 +101,7 @@ void boot_image(void){
     // Forçar atualização da tela
     lv_refr_now(disp);
     
-    ESP_LOGI(TAG, "Boot image displayed successfully");
+    ESP_LOGI(TAG, "Imagem de boot OK");
 }
 
 void lcd_display_welcome(void) {

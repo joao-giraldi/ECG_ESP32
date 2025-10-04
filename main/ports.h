@@ -22,8 +22,8 @@ extern "C" {
 #define SD_SCK_PORT         15
 #define SD_CS_PORT          5
 
-#define START_INT           32
-#define STOP_INT            33
+#define START_INT_PORT      32
+#define STOP_INT_PORT       33
 
 esp_err_t config_ports(void);
 
