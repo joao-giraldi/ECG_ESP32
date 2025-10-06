@@ -1,11 +1,9 @@
-"use strict";
-
 /* =========================================================================
  * CONFIG FIXA (sem inputs na UI)
  * ========================================================================= */
-const FS_CONST = 125; // Hz
-const FMT_CONST = "i16le"; // Int16 Little-Endian
-const GAIN_CONST = 1.0; // LSB -> unidade arbitrária
+const FS_CONST = 46;
+const FMT_CONST = "i16le";
+const GAIN_CONST = 1.0;
 
 /* =========================================================================
  * DOM
@@ -19,7 +17,6 @@ const ctx = cvs.getContext("2d");
 const xScroll = document.getElementById("xScroll");
 const zoomCtrl = document.getElementById("zoomCtrl");
 
-// Infos no topo (opcionais – só preenche se existirem)
 const infoDur = document.getElementById("infoDur");
 const infoBpm = document.getElementById("infoBpm");
 const infoSamples = document.getElementById("infoSamples");
@@ -33,14 +30,14 @@ const DPR = window.devicePixelRatio || 1;
 let W = 0,
   H = 0;
 
-let fullData = null; // Float32Array com todos os samples
+let fullData = null;
 let fsCur = FS_CONST;
 
 let yMinG = 0,
-  yMaxG = 1; // escala global (auto-ajustada ao carregar)
+  yMaxG = 1;
 
-let viewStart = 0; // índice inicial da janela
-let viewLen = 0; // tamanho da janela (em amostras)
+let viewStart = 0;
+let viewLen = 0;
 let maxViewLen = 0;
 
 const MIN_SAMPLES_ABS = 32;
@@ -152,7 +149,6 @@ function parseBuffer(buf) {
     arr = new Float32Array(N);
     for (let i = 0; i < N; i++) arr[i] = dv.getInt8(i) * GAIN_CONST;
   } else {
-    // u8
     arr = new Float32Array(N);
     for (let i = 0; i < N; i++) arr[i] = dv.getUint8(i) * GAIN_CONST;
   }
@@ -184,11 +180,9 @@ function redraw() {
   syncCanvasSizeIfNeeded();
   ctx.clearRect(0, 0, W, H);
 
-  // fundo
   ctx.fillStyle = "#0b0b0d";
   ctx.fillRect(0, 0, W, H);
 
-  // grid suave
   ctx.strokeStyle = "rgba(255,255,255,.05)";
   ctx.lineWidth = 1;
   const gx = 10,
@@ -208,7 +202,6 @@ function redraw() {
     ctx.stroke();
   }
 
-  // placeholder
   if (!fullData || fullData.length === 0) {
     ctx.fillStyle = "#9ca3af";
     ctx.font = `${14 * DPR}px system-ui`;
@@ -220,19 +213,16 @@ function redraw() {
     return;
   }
 
-  // janela atual
   const start = Math.max(0, Math.min(viewStart, fullData.length - 1));
   const end = Math.min(fullData.length, start + viewLen);
   const win = fullData.subarray(start, end);
   const data = downsampleForWidth(win);
 
-  // escalas
   const pad = 8 * DPR;
   const yMin = yMinG,
     yMax = yMaxG;
   const kY = (H - 2 * pad) / (yMax - yMin || 1);
 
-  // linha
   ctx.strokeStyle = "#22d3ee";
   ctx.lineWidth = Math.max(1, 1 * DPR);
   ctx.beginPath();
@@ -245,7 +235,6 @@ function redraw() {
   }
   ctx.stroke();
 
-  // legenda da janela
   const secs = viewLen / (fsCur || 1);
   ctx.fillStyle = "#9ca3af";
   ctx.font = `${12 * DPR}px system-ui`;
@@ -303,7 +292,6 @@ function setZoomFromAnchor(newLen, anchorPx) {
   setViewport(start, len);
 }
 
-// wheel zoom
 cvs.addEventListener(
   "wheel",
   (e) => {
@@ -318,7 +306,6 @@ cvs.addEventListener(
   { passive: false }
 );
 
-// mouse pan
 cvs.addEventListener("mousedown", (e) => {
   if (!fullData) return;
   isDragging = true;
@@ -336,7 +323,6 @@ window.addEventListener("mousemove", (e) => {
   setViewport(dragStartView - delta, viewLen);
 });
 
-// barra inferior
 xScroll?.addEventListener("input", (e) => {
   if (!fullData) return;
   const val = Number(e.target.value);
@@ -345,7 +331,6 @@ xScroll?.addEventListener("input", (e) => {
   setViewport(start, viewLen);
 });
 
-// slider de zoom
 zoomCtrl?.addEventListener("input", (e) => {
   if (!fullData) return;
   const v = Number(e.target.value);
@@ -353,7 +338,6 @@ zoomCtrl?.addEventListener("input", (e) => {
   setZoomFromAnchor(len, (W * DPR) / 2);
 });
 
-// atalhos +/-
 window.addEventListener("keydown", (e) => {
   if (!fullData) return;
   if (e.key === "+" || e.key === "=") {
@@ -387,7 +371,6 @@ function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
   return movingAverage(hp, short);
 }
 function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
-  // z-score
   let mean = 0,
     varAcc = 0;
   for (let i = 0; i < samples.length; i++) mean += samples[i];
@@ -425,7 +408,6 @@ function computeBpmFromPeaks(peaks, fs) {
   const rr = [];
   for (let i = 1; i < peaks.length; i++)
     rr.push((peaks[i] - peaks[i - 1]) / fs);
-  // 30–220 BPM
   const rrFiltered = rr.filter((r) => r >= 60 / 220 && r <= 60 / 30);
   if (!rrFiltered.length) return { bpm: NaN, rrMean: NaN, beats: peaks.length };
   const rrMean = rrFiltered.reduce((a, b) => a + b, 0) / rrFiltered.length;
@@ -444,7 +426,6 @@ function updateMetricsUI() {
   });
   const { bpm, beats } = computeBpmFromPeaks(peaks, fsCur);
 
-  // topo (se existir)
   const infoDur = document.getElementById("infoDur");
   const infoBpm = document.getElementById("infoBpm");
   const infoSamples = document.getElementById("infoSamples");
@@ -453,7 +434,6 @@ function updateMetricsUI() {
     infoBpm.textContent = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "n/d";
   if (infoSamples) infoSamples.textContent = `${totalSamples}`;
 
-  // rodapé (se existir)
   const summary = document.getElementById("summary");
   if (summary) {
     const bpmText = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "BPM n/d";
@@ -469,24 +449,39 @@ function updateMetricsUI() {
 async function handleBuffer(buf, nameLabel) {
   fsCur = Math.max(1, Number(fsInput?.value) || FS_CONST);
   minViewLen = Math.max(MIN_SAMPLES_ABS, Math.round(fsCur * MIN_WINDOW_SECONDS));
+
   const raw = parseBuffer(buf);
 
-  // === Remover padding de zeros/quase-zeros no final ===
+  // === Remover padding de zeros/quase-zeros no final (detecção automática) ===
   let trimmed = raw;
-  let zeroCount = 0;
-  const ZERO_THRESHOLD = 10; // tolerância (valores entre -10 e +10 contam como zero)
-  const ZERO_RUN_SECONDS = 0.3;
-  const ZERO_RUN_THRESHOLD = Math.round((fsCur || 100) * ZERO_RUN_SECONDS);
+
+  const ZERO_THRESHOLD = 5;
+  const MIN_RUN_SEC = 0.25;
+  const MIN_RUN_SAMPLES = Math.round((fsCur || 100) * MIN_RUN_SEC);
+
+  let zeroRun = 0;
+  let lastValidIdx = raw.length - 1;
 
   for (let i = raw.length - 1; i >= 0; i--) {
     const v = raw[i];
-    if (Math.abs(v) <= ZERO_THRESHOLD) zeroCount++;
-    else zeroCount = 0;
-    if (zeroCount >= ZERO_RUN_THRESHOLD) {
-      trimmed = raw.subarray(0, Math.max(0, i - zeroCount + 1));
-      console.log(`Trim aplicado: ${raw.length} → ${trimmed.length}`);
-      break;
+    if (Math.abs(v) <= ZERO_THRESHOLD) {
+      zeroRun++;
+    } else {
+      if (zeroRun >= MIN_RUN_SAMPLES) {
+        lastValidIdx = i;
+        break;
+      }
+      zeroRun = 0;
     }
+  }
+
+  if (lastValidIdx < raw.length - 1) {
+    trimmed = raw.subarray(0, lastValidIdx + 1);
+    const removed = raw.length - trimmed.length;
+    const pct = ((removed / raw.length) * 100).toFixed(1);
+    console.log(`🧹 Cortados ${removed} amostras (${pct}%) de zeros finais`);
+  } else {
+    console.log("✅ Nenhum padding de zeros detectado");
   }
 
   fullData = trimmed;
@@ -501,33 +496,38 @@ async function handleBuffer(buf, nameLabel) {
   yMinG = lo;
   yMaxG = hi;
 
-  const desiredLen = Math.min(maxViewLen, Math.max(minViewLen, Math.round(fsCur * 10)));
+  const desiredLen = Math.min(
+    maxViewLen,
+    Math.max(minViewLen, Math.round(fsCur * 10))
+  );
   setViewport(0, desiredLen);
 
   updateMetricsUI();
   meta.textContent = nameLabel;
   stat.textContent = `total pts ${fullData.length}`;
 }
+
 fsInput?.addEventListener("change", () => {
-  const v = Math.max(1, Number(fsInput.value) || 125);
+  const v = Math.max(1, Number(fsInput.value) || FS_CONST);
   fsInput.value = String(v);
   if (!fullData) return;
 
   fsCur = v;
-  // ajusta janela mínima baseada no novo Fs
+
   const oldMin = minViewLen;
   minViewLen = Math.max(
     MIN_SAMPLES_ABS,
     Math.round(fsCur * MIN_WINDOW_SECONDS)
   );
 
-  // mantém a janela se possível; caso esteja menor que o mínimo novo, ajusta
   if (viewLen < minViewLen) setViewport(viewStart, minViewLen);
+
+  updateMetricsUI();
   scheduleRender();
 
-  // recomputa métricas (BPM/duração) com novo Fs
-  updateMetricsUI();
+  stat.textContent = `total pts ${fullData.length} · Fs = ${fsCur} Hz`;
 });
+
 
 async function loadAndPlot() {
   const name = sel.value;
