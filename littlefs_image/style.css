@@ -1,3 +1,6 @@
+/* ===============================
+   Tema e variáveis globais
+==================================*/
 :root {
   --bg: #0b0b0d;
   --fg: #f4f4f5;
@@ -14,13 +17,17 @@
   --shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* ===============================
+   Estrutura global
+==================================*/
 * {
   box-sizing: border-box;
 }
-html,
-body {
+
+html, body {
   height: 100%;
 }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -34,6 +41,9 @@ body {
   padding: 0 8px;
 }
 
+/* ===============================
+   Card principal
+==================================*/
 .card {
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -41,13 +51,16 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* ===============================
+   Cabeçalho
+==================================*/
 .head {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--surface-border);
   display: flex;
-  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .title {
@@ -61,14 +74,21 @@ body {
   color: var(--muted);
 }
 
+/* ===============================
+   Controles (topo)
+==================================*/
 .controls {
-  padding: 12px 16px 16px;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   align-items: end;
+  padding: 12px 16px 8px;
 }
 
+.controls--compact {
+  grid-template-columns: 1fr 140px auto;
+}
+
+/* Labels */
 .controls label {
   font-size: 12px;
   color: var(--muted);
@@ -76,6 +96,7 @@ body {
   margin-bottom: 6px;
 }
 
+/* Inputs e selects */
 .controls input,
 .controls select,
 .btn {
@@ -86,10 +107,30 @@ body {
   color: var(--fg);
   border: 1px solid var(--input-border);
   border-radius: 10px;
-  outline: none;
   line-height: 1;
+  outline: none;
 }
 
+/* Inputs numéricos */
+.controls input[type="number"]::-webkit-outer-spin-button,
+.controls input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.controls input[type="number"] {
+  appearance: textfield;
+}
+
+/* Campo específico do Fs */
+.ctrl.ctrl--fs {
+  min-width: 120px;
+}
+.ctrl.ctrl--fs input {
+  text-align: right;
+}
+
+/* Foco */
 .controls input:focus-visible,
 .controls select:focus-visible,
 .btn:focus-visible {
@@ -97,20 +138,14 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
 }
 
-.controls input[type="number"]::-webkit-outer-spin-button,
-.controls input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.controls input[type="number"] {
-  appearance: textfield;
-}
-
+/* Botão */
 .btn {
   appearance: none;
-  border: 1px solid #2b2b33;
   background: #111116;
+  border: 1px solid #2b2b33;
+  padding-inline: 16px;
   cursor: pointer;
+  white-space: nowrap;
 }
 .btn:active {
   transform: scale(0.98);
@@ -119,6 +154,28 @@ body {
   align-self: end;
 }
 
+/* ===============================
+   Informações abaixo dos controles
+==================================*/
+.info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 0 16px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.info span {
+  background: #0f0f13;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+/* ===============================
+   Canvas do ECG
+==================================*/
 .canvasBox {
   position: relative;
   padding: 8px 16px 16px;
@@ -138,24 +195,20 @@ body {
   outline-offset: 6px;
 }
 
+/* ===============================
+   Barra de rolagem
+==================================*/
 .x-scroll {
   width: 100%;
   margin-top: 8px;
-  appearance: none;
   height: 6px;
+  appearance: none;
   background: var(--surface-border);
   border-radius: 999px;
   outline: none;
 }
-.x-scroll::-webkit-slider-thumb {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--acc);
-  border: 2px solid var(--bg);
-  cursor: pointer;
-}
+
+.x-scroll::-webkit-slider-thumb,
 .x-scroll::-moz-range-thumb {
   width: 14px;
   height: 14px;
@@ -165,13 +218,14 @@ body {
   cursor: pointer;
 }
 
+/* ===============================
+   Controle de Zoom
+==================================*/
 .zoom-overlay {
   position: absolute;
   top: 12px;
   right: 20px;
-  left: auto;
   z-index: 2;
-
   display: flex;
   align-items: center;
   gap: 8px;
@@ -196,15 +250,8 @@ body {
   border-radius: 999px;
   outline: none;
 }
-.zoom-overlay input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--acc);
-  border: 2px solid var(--bg);
-  cursor: pointer;
-}
+
+.zoom-overlay input[type="range"]::-webkit-slider-thumb,
 .zoom-overlay input[type="range"]::-moz-range-thumb {
   width: 14px;
   height: 14px;
@@ -214,25 +261,34 @@ body {
   cursor: pointer;
 }
 
+/* ===============================
+   Rodapé
+==================================*/
 .footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 10px 16px;
   border-top: 1px solid var(--surface-border);
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
   font-size: 12px;
   color: var(--muted);
 }
 
-@media (min-width: 900px) {
-  .controls {
-    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+/* ===============================
+   Responsividade
+==================================*/
+@media (max-width: 640px) {
+  .controls--compact {
+    grid-template-columns: 1fr;
   }
-  #chart {
-    height: 60vh;
+  .btn {
+    width: 100%;
   }
 }
 
+/* ===============================
+   Acessibilidade (menos animações)
+==================================*/
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto;

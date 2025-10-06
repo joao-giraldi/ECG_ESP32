@@ -1,26 +1,46 @@
+"use strict";
+
+/* =========================================================================
+ * CONFIG FIXA (sem inputs na UI)
+ * ========================================================================= */
+const FS_CONST = 125; // Hz
+const FMT_CONST = "i16le"; // Int16 Little-Endian
+const GAIN_CONST = 1.0; // LSB -> unidade arbitrária
+
+/* =========================================================================
+ * DOM
+ * ========================================================================= */
 const sel = document.getElementById("fileSel");
-const fsIn = document.getElementById("fs");
-const fmtSel = document.getElementById("fmt");
-const gainIn = document.getElementById("gain");
+const btn = document.getElementById("btnLoad");
 const meta = document.getElementById("meta");
 const stat = document.getElementById("stat");
-const btn = document.getElementById("btnLoad");
 const cvs = document.getElementById("chart");
 const ctx = cvs.getContext("2d");
 const xScroll = document.getElementById("xScroll");
 const zoomCtrl = document.getElementById("zoomCtrl");
 
+// Infos no topo (opcionais – só preenche se existirem)
+const infoDur = document.getElementById("infoDur");
+const infoBpm = document.getElementById("infoBpm");
+const infoSamples = document.getElementById("infoSamples");
+
+const fsInput = document.getElementById("fs");
+
+/* =========================================================================
+ * STATE DO CANVAS/VISUALIZAÇÃO
+ * ========================================================================= */
+const DPR = window.devicePixelRatio || 1;
 let W = 0,
   H = 0;
-const DPR = window.devicePixelRatio || 1;
 
-let fullData = null;
-let fsCur = 100;
+let fullData = null; // Float32Array com todos os samples
+let fsCur = FS_CONST;
+
 let yMinG = 0,
-  yMaxG = 1;
+  yMaxG = 1; // escala global (auto-ajustada ao carregar)
 
-let viewStart = 0;
-let viewLen = 0;
+let viewStart = 0; // índice inicial da janela
+let viewLen = 0; // tamanho da janela (em amostras)
 let maxViewLen = 0;
 
 const MIN_SAMPLES_ABS = 32;
@@ -32,6 +52,10 @@ let dragStartX = 0;
 let dragStartView = 0;
 
 let rafId = 0;
+
+/* =========================================================================
+ * UTILS
+ * ========================================================================= */
 function scheduleRender() {
   if (rafId) return;
   rafId = requestAnimationFrame(() => {
@@ -53,6 +77,7 @@ function syncCanvasSizeIfNeeded() {
   }
   return false;
 }
+
 function handleResize() {
   if (syncCanvasSizeIfNeeded()) scheduleRender();
 }
@@ -69,12 +94,14 @@ function prettyBytes(b) {
   return b.toFixed(i ? 1 : 0) + " " + u[i];
 }
 
+/* =========================================================================
+ * ARQUIVOS DO ESP
+ * ========================================================================= */
 async function listFiles() {
   try {
     const r = await fetch("/api/files");
     if (!r.ok) throw new Error("HTTP " + r.status);
     const js = await r.json();
-    console.log(js)
 
     sel.innerHTML = "";
     if (!Array.isArray(js) || js.length === 0) {
@@ -94,7 +121,7 @@ async function listFiles() {
     }
     btn.disabled = false;
     return js;
-  } catch (e) {
+  } catch {
     sel.innerHTML = "";
     const o = document.createElement("option");
     o.text = "(falha ao listar)";
@@ -105,32 +132,36 @@ async function listFiles() {
   }
 }
 
+/* =========================================================================
+ * PARSE DO BIN (formato fixo)
+ * ========================================================================= */
 function parseBuffer(buf) {
-  const fmt = fmtSel.value;
-  const g = parseFloat(gainIn.value) || 1;
   const dv = new DataView(buf);
   let N = buf.byteLength;
   let arr;
 
-  if (fmt === "i16le") {
+  if (FMT_CONST === "i16le") {
     N >>= 1;
     arr = new Float32Array(N);
-    for (let i = 0; i < N; i++) arr[i] = dv.getInt16(i * 2, true) * g;
-  } else if (fmt === "u16le") {
+    for (let i = 0; i < N; i++) arr[i] = dv.getInt16(i * 2, true) * GAIN_CONST;
+  } else if (FMT_CONST === "u16le") {
     N >>= 1;
     arr = new Float32Array(N);
-    for (let i = 0; i < N; i++) arr[i] = dv.getUint16(i * 2, true) * g;
-  } else if (fmt === "i8") {
+    for (let i = 0; i < N; i++) arr[i] = dv.getUint16(i * 2, true) * GAIN_CONST;
+  } else if (FMT_CONST === "i8") {
     arr = new Float32Array(N);
-    for (let i = 0; i < N; i++) arr[i] = dv.getInt8(i) * g;
+    for (let i = 0; i < N; i++) arr[i] = dv.getInt8(i) * GAIN_CONST;
   } else {
     // u8
     arr = new Float32Array(N);
-    for (let i = 0; i < N; i++) arr[i] = dv.getUint8(i) * g;
+    for (let i = 0; i < N; i++) arr[i] = dv.getUint8(i) * GAIN_CONST;
   }
   return arr;
 }
 
+/* =========================================================================
+ * DOWNSAMPLE P/ DESENHO
+ * ========================================================================= */
 function decimateByStep(data, step) {
   if (step <= 1) return data;
   const out = new Float32Array(Math.ceil(data.length / step));
@@ -146,13 +177,18 @@ function downsampleForWidth(dataWindow) {
   return decimateByStep(dataWindow, step);
 }
 
+/* =========================================================================
+ * DESENHO
+ * ========================================================================= */
 function redraw() {
   syncCanvasSizeIfNeeded();
   ctx.clearRect(0, 0, W, H);
 
+  // fundo
   ctx.fillStyle = "#0b0b0d";
   ctx.fillRect(0, 0, W, H);
 
+  // grid suave
   ctx.strokeStyle = "rgba(255,255,255,.05)";
   ctx.lineWidth = 1;
   const gx = 10,
@@ -172,6 +208,7 @@ function redraw() {
     ctx.stroke();
   }
 
+  // placeholder
   if (!fullData || fullData.length === 0) {
     ctx.fillStyle = "#9ca3af";
     ctx.font = `${14 * DPR}px system-ui`;
@@ -183,16 +220,19 @@ function redraw() {
     return;
   }
 
+  // janela atual
   const start = Math.max(0, Math.min(viewStart, fullData.length - 1));
   const end = Math.min(fullData.length, start + viewLen);
   const win = fullData.subarray(start, end);
   const data = downsampleForWidth(win);
 
+  // escalas
   const pad = 8 * DPR;
   const yMin = yMinG,
     yMax = yMaxG;
   const kY = (H - 2 * pad) / (yMax - yMin || 1);
 
+  // linha
   ctx.strokeStyle = "#22d3ee";
   ctx.lineWidth = Math.max(1, 1 * DPR);
   ctx.beginPath();
@@ -205,6 +245,7 @@ function redraw() {
   }
   ctx.stroke();
 
+  // legenda da janela
   const secs = viewLen / (fsCur || 1);
   ctx.fillStyle = "#9ca3af";
   ctx.font = `${12 * DPR}px system-ui`;
@@ -215,6 +256,9 @@ function redraw() {
   );
 }
 
+/* =========================================================================
+ * ZOOM/PAN
+ * ========================================================================= */
 function lenToZoomValue(len) {
   const min = Math.max(1, minViewLen);
   const max = Math.max(min + 1, maxViewLen);
@@ -229,12 +273,10 @@ function zoomValueToLen(v) {
     Math.exp(Math.log(min) + t * (Math.log(max) - Math.log(min)))
   );
 }
-
 function setViewport(start, len) {
   if (!fullData) return;
   const newLen = Math.max(minViewLen, Math.min(len, maxViewLen));
   const newStart = Math.max(0, Math.min(start, fullData.length - newLen));
-
   if (newLen === viewLen && newStart === viewStart) return;
 
   viewLen = newLen;
@@ -248,10 +290,8 @@ function setViewport(start, len) {
   if (zoomCtrl) {
     zoomCtrl.value = String(lenToZoomValue(viewLen));
   }
-
   scheduleRender();
 }
-
 function setZoomFromAnchor(newLen, anchorPx) {
   const frac = Math.max(
     0,
@@ -263,6 +303,7 @@ function setZoomFromAnchor(newLen, anchorPx) {
   setViewport(start, len);
 }
 
+// wheel zoom
 cvs.addEventListener(
   "wheel",
   (e) => {
@@ -277,6 +318,7 @@ cvs.addEventListener(
   { passive: false }
 );
 
+// mouse pan
 cvs.addEventListener("mousedown", (e) => {
   if (!fullData) return;
   isDragging = true;
@@ -294,25 +336,24 @@ window.addEventListener("mousemove", (e) => {
   setViewport(dragStartView - delta, viewLen);
 });
 
-if (xScroll) {
-  xScroll.addEventListener("input", (e) => {
-    if (!fullData) return;
-    const val = Number(e.target.value);
-    const maxStart = fullData.length - viewLen;
-    const start = Math.round((val / 1000) * maxStart);
-    setViewport(start, viewLen);
-  });
-}
+// barra inferior
+xScroll?.addEventListener("input", (e) => {
+  if (!fullData) return;
+  const val = Number(e.target.value);
+  const maxStart = fullData.length - viewLen;
+  const start = Math.round((val / 1000) * maxStart);
+  setViewport(start, viewLen);
+});
 
-if (zoomCtrl) {
-  zoomCtrl.addEventListener("input", (e) => {
-    if (!fullData) return;
-    const v = Number(e.target.value);
-    const len = zoomValueToLen(v);
-    setZoomFromAnchor(len, (W * DPR) / 2);
-  });
-}
+// slider de zoom
+zoomCtrl?.addEventListener("input", (e) => {
+  if (!fullData) return;
+  const v = Number(e.target.value);
+  const len = zoomValueToLen(v);
+  setZoomFromAnchor(len, (W * DPR) / 2);
+});
 
+// atalhos +/-
 window.addEventListener("keydown", (e) => {
   if (!fullData) return;
   if (e.key === "+" || e.key === "=") {
@@ -322,40 +363,171 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+/* =========================================================================
+ * BPM (detecção simples de picos)
+ * ========================================================================= */
+function movingAverage(arr, win) {
+  const n = arr.length,
+    w = Math.max(1, win);
+  const out = new Float32Array(n);
+  let acc = 0;
+  for (let i = 0; i < n; i++) {
+    acc += arr[i];
+    if (i >= w) acc -= arr[i - w];
+    out[i] = acc / Math.min(i + 1, w);
+  }
+  return out;
+}
+function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
+  const long = Math.max(1, Math.floor((highMs / 1000) * fs));
+  const short = Math.max(1, Math.floor((lowMs / 1000) * fs));
+  const base = movingAverage(x, long);
+  const hp = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) hp[i] = x[i] - base[i];
+  return movingAverage(hp, short);
+}
+function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
+  // z-score
+  let mean = 0,
+    varAcc = 0;
+  for (let i = 0; i < samples.length; i++) mean += samples[i];
+  mean /= samples.length || 1;
+  for (let i = 0; i < samples.length; i++) varAcc += (samples[i] - mean) ** 2;
+  const std = Math.sqrt(varAcc / (samples.length || 1)) || 1;
+
+  const x = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) x[i] = (samples[i] - mean) / std;
+
+  const xf = bandpassMAvg(x, fs, 80, 800);
+  const z = new Float32Array(xf.length);
+  for (let i = 0; i < xf.length; i++) z[i] = xf[i] * xf[i];
+
+  const sorted = Array.from(z).sort((a, b) => a - b);
+  const k = Math.floor(thrQuantile * (sorted.length - 1));
+  const thr = sorted[Math.max(0, Math.min(sorted.length - 1, k))];
+
+  const rawPeaks = [];
+  for (let i = 1; i < z.length - 1; i++) {
+    if (z[i] > thr && z[i] > z[i - 1] && z[i] > z[i + 1]) rawPeaks.push(i);
+  }
+
+  const refr = Math.floor((refrMs / 1000) * fs);
+  const peaks = [];
+  for (const p of rawPeaks) {
+    if (peaks.length === 0 || p - peaks[peaks.length - 1] >= refr)
+      peaks.push(p);
+  }
+  return { peaks, z, thr };
+}
+function computeBpmFromPeaks(peaks, fs) {
+  if (!peaks || peaks.length < 2)
+    return { bpm: NaN, rrMean: NaN, beats: peaks.length };
+  const rr = [];
+  for (let i = 1; i < peaks.length; i++)
+    rr.push((peaks[i] - peaks[i - 1]) / fs);
+  // 30–220 BPM
+  const rrFiltered = rr.filter((r) => r >= 60 / 220 && r <= 60 / 30);
+  if (!rrFiltered.length) return { bpm: NaN, rrMean: NaN, beats: peaks.length };
+  const rrMean = rrFiltered.reduce((a, b) => a + b, 0) / rrFiltered.length;
+  return { bpm: 60 / rrMean, rrMean, beats: peaks.length };
+}
+
+function updateMetricsUI() {
+  if (!fullData) return;
+  const totalSamples = fullData.length;
+  const durationSec = totalSamples / (fsCur || 1);
+  const minutes = durationSec / 60;
+
+  const { peaks } = detectRPeaks(fullData, fsCur, {
+    thrQuantile: 0.9,
+    refrMs: 300,
+  });
+  const { bpm, beats } = computeBpmFromPeaks(peaks, fsCur);
+
+  // topo (se existir)
+  const infoDur = document.getElementById("infoDur");
+  const infoBpm = document.getElementById("infoBpm");
+  const infoSamples = document.getElementById("infoSamples");
+  if (infoDur) infoDur.textContent = `${minutes.toFixed(2)} min`;
+  if (infoBpm)
+    infoBpm.textContent = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "n/d";
+  if (infoSamples) infoSamples.textContent = `${totalSamples}`;
+
+  // rodapé (se existir)
+  const summary = document.getElementById("summary");
+  if (summary) {
+    const bpmText = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "BPM n/d";
+    summary.textContent = `• ${bpmText} • ${beats} batimentos • ${minutes.toFixed(
+      2
+    )} min`;
+  }
+}
+
+/* =========================================================================
+ * PIPELINE DE CARREGAMENTO
+ * ========================================================================= */
 async function handleBuffer(buf, nameLabel) {
-  fsCur = parseFloat(fsIn.value) || 500;
-
-  minViewLen = Math.max(
-    MIN_SAMPLES_ABS,
-    Math.round(fsCur * MIN_WINDOW_SECONDS)
-  );
-
+  fsCur = Math.max(1, Number(fsInput?.value) || FS_CONST);
+  minViewLen = Math.max(MIN_SAMPLES_ABS, Math.round(fsCur * MIN_WINDOW_SECONDS));
   const raw = parseBuffer(buf);
 
-  let lo = Infinity,
-    hi = -Infinity;
-  for (let i = 0; i < raw.length; i++) {
+  // === Remover padding de zeros/quase-zeros no final ===
+  let trimmed = raw;
+  let zeroCount = 0;
+  const ZERO_THRESHOLD = 10; // tolerância (valores entre -10 e +10 contam como zero)
+  const ZERO_RUN_SECONDS = 0.3;
+  const ZERO_RUN_THRESHOLD = Math.round((fsCur || 100) * ZERO_RUN_SECONDS);
+
+  for (let i = raw.length - 1; i >= 0; i--) {
     const v = raw[i];
+    if (Math.abs(v) <= ZERO_THRESHOLD) zeroCount++;
+    else zeroCount = 0;
+    if (zeroCount >= ZERO_RUN_THRESHOLD) {
+      trimmed = raw.subarray(0, Math.max(0, i - zeroCount + 1));
+      console.log(`Trim aplicado: ${raw.length} → ${trimmed.length}`);
+      break;
+    }
+  }
+
+  fullData = trimmed;
+  maxViewLen = fullData.length;
+
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < fullData.length; i++) {
+    const v = fullData[i];
     if (v < lo) lo = v;
     if (v > hi) hi = v;
   }
   yMinG = lo;
   yMaxG = hi;
 
-  fullData = raw;
-  maxViewLen = fullData.length;
-
-  const desiredLen = Math.min(
-    maxViewLen,
-    Math.max(minViewLen, Math.round(fsCur * 10))
-  );
+  const desiredLen = Math.min(maxViewLen, Math.max(minViewLen, Math.round(fsCur * 10)));
   setViewport(0, desiredLen);
 
-  if (zoomCtrl) zoomCtrl.value = String(lenToZoomValue(viewLen));
-
+  updateMetricsUI();
   meta.textContent = nameLabel;
   stat.textContent = `total pts ${fullData.length}`;
 }
+fsInput?.addEventListener("change", () => {
+  const v = Math.max(1, Number(fsInput.value) || 125);
+  fsInput.value = String(v);
+  if (!fullData) return;
+
+  fsCur = v;
+  // ajusta janela mínima baseada no novo Fs
+  const oldMin = minViewLen;
+  minViewLen = Math.max(
+    MIN_SAMPLES_ABS,
+    Math.round(fsCur * MIN_WINDOW_SECONDS)
+  );
+
+  // mantém a janela se possível; caso esteja menor que o mínimo novo, ajusta
+  if (viewLen < minViewLen) setViewport(viewStart, minViewLen);
+  scheduleRender();
+
+  // recomputa métricas (BPM/duração) com novo Fs
+  updateMetricsUI();
+});
 
 async function loadAndPlot() {
   const name = sel.value;
@@ -379,38 +551,41 @@ async function loadAndPlot() {
     t2 - t1
   ).toFixed(0)} ms · total pts ${fullData.length}`;
 }
-btn.addEventListener("click", loadAndPlot);
+btn?.addEventListener("click", loadAndPlot);
 
-const btnLocal = document.getElementById("btnLocal");
-const localInput = document.getElementById("localFile");
-btnLocal?.addEventListener("click", () => localInput?.click());
-localInput?.addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  meta.textContent = `${file.name} — (local)`;
-  stat.textContent = "lendo arquivo…";
-  const t0 = performance.now();
-  const buf = await file.arrayBuffer();
-  const t1 = performance.now();
-  await handleBuffer(
-    buf,
-    `${file.name} — (local) ${prettyBytes(buf.byteLength)}`
-  );
-  const t2 = performance.now();
-  stat.textContent = `local read ${(t1 - t0).toFixed(0)} ms · parse ${(
-    t2 - t1
-  ).toFixed(0)} ms · total pts ${fullData.length}`;
+/* =========================================================================
+ * DRAG & DROP LOCAL (com highlight)
+ * ========================================================================= */
+let dragCounter = 0;
+cvs.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  dragCounter++;
+  cvs.classList.add("drop-ready");
+});
+cvs.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  dragCounter = Math.max(0, dragCounter - 1);
+  if (dragCounter === 0) cvs.classList.remove("drop-ready");
 });
 cvs.addEventListener("dragover", (e) => e.preventDefault());
 cvs.addEventListener("drop", async (e) => {
   e.preventDefault();
+  dragCounter = 0;
+  cvs.classList.remove("drop-ready");
   const f = e.dataTransfer?.files?.[0];
   if (!f) return;
+  if (!f.name.toLowerCase().endsWith(".bin")) {
+    meta.textContent = "Arquivo inválido: selecione um .bin";
+    return;
+  }
   meta.textContent = `${f.name} — (local)`;
   const buf = await f.arrayBuffer();
   await handleBuffer(buf, `${f.name} — (local) ${prettyBytes(buf.byteLength)}`);
 });
 
+/* =========================================================================
+ * INIT
+ * ========================================================================= */
 (async () => {
   try {
     await listFiles();
