@@ -3,8 +3,6 @@
 
 static const char *TAG = "LCD";
 
-#define I2C_HOST  0
-
 bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
     lv_disp_t * disp = (lv_disp_t *)user_ctx;
@@ -13,6 +11,8 @@ bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_i
 }
 
 void lcd_config(void) {
+    ESP_LOGI(TAG, "Configurando LCD SSD1306...");
+
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_i2c_config_t io_config = {
         .dev_addr = I2C_HW_ADDR,
@@ -20,9 +20,13 @@ void lcd_config(void) {
         .lcd_cmd_bits = LCD_CMD_BITS,           // De acordo com o Datasheet
         .lcd_param_bits = LCD_CMD_BITS,         // De acordo com o Datasheet
         .dc_bit_offset = 6,                     // De acordo com o Datasheet
+        .flags = {
+            .disable_control_phase = 0,
+        }
     };
 
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_HOST, &io_config, &io_handle));
+    // Usar o barramento I2C já inicializado (I2C_NUM_0)
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_NUM_0, &io_config, &io_handle));
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
@@ -30,9 +34,20 @@ void lcd_config(void) {
         .reset_gpio_num = PIN_NUM_RST,
     };
 
-    ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(io_handle, &panel_config, &panel_handle));
+    ESP_LOGI(TAG, "Criando painel SSD1306...");
+    esp_err_t ret = esp_lcd_new_panel_ssd1306(io_handle, &panel_config, &panel_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Falha ao criar painel SSD1306: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Resetando painel...");
     ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    
+    ESP_LOGI(TAG, "Inicializando painel...");
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+    
+    ESP_LOGI(TAG, "Ligando display...");
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
     ESP_LOGI(TAG, "Iniciando LVGL");

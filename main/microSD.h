@@ -10,6 +10,11 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
+#include "diskio_impl.h"
+#include "diskio_sdmmc.h"
+#include "ff.h"
+#include <string.h>
+#include <stdlib.h>
 
 #include "ports.h"
 #include "ecg.h"

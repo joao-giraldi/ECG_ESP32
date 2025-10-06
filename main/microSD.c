@@ -10,6 +10,10 @@ static char current_filename[64] = "";
 // Mutex para proteger acesso à variável current_filename
 static SemaphoreHandle_t filename_mutex = NULL;
 
+// Variáveis estáticas para controle do arquivo
+static FILE *current_file = NULL;
+static uint8_t write_count = 0;
+
 extern QueueHandle_t ecg_buffer_queue;
 extern TaskHandle_t ecg_handler;
 
@@ -58,30 +62,12 @@ void sd_config(void) {
         ESP_LOGE("SD", "Falha ao montar o sistema de arquivos.");
     }
 
-    ESP_LOGI("SD", "Filesystem mounted");
+    ESP_LOGI("SD", "Sistema de arquivos montado");
 
-    sdmmc_card_print_info(stdout, sd_card);
-
-    // Teste básico de escrita para verificar se o sistema de arquivos está funcionando
-    ESP_LOGI("SD", "Testando escrita no sistema de arquivos...");
-    FILE* test_file = fopen(MOUNT_POINT"/test.txt", "w");
-    if(test_file != NULL) {
-        fprintf(test_file, "teste\n");
-        fclose(test_file);
-        ESP_LOGI("SD", "Teste de escrita OK - sistema de arquivos funcional");
-        
-        // Remover arquivo de teste
-        remove(MOUNT_POINT"/test.txt");
-    } else {
-        ESP_LOGE("SD", "Teste de escrita FALHOU: %s", strerror(errno));
-    }
+    //sdmmc_card_print_info(stdout, sd_card);
 
     ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
 }
-
-// Variáveis estáticas para controle do arquivo
-static FILE *current_file = NULL;
-static uint8_t write_count = 0;
 
 void write_file(const char *path, int16_t *data) {
     ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
@@ -264,9 +250,6 @@ void sd_task(void *pvParameters) {
             } else {
                 ESP_LOGE("SD", "Buffer com dados inválidos descartado");
             }
-        } else {
-            // Timeout - sem dados na fila, continua aguardando
-            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }

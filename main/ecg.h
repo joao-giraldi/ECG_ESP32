@@ -5,7 +5,9 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "driver/gpio.h"
+#include "driver/gptimer.h"
 #include "esp_log.h"
 
 #include "ports.h"
@@ -14,10 +16,14 @@
 extern "C" {
 #endif
 
-#define ECG_SAMPLE_RATE     100                         // 100 Hz sample rate
+#define ECG_SAMPLE_RATE     130                         // Hz sample rate target
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
+#define ECG_TIMER_PERIOD_US (1000000/ECG_SAMPLE_RATE)  // Timer period in microseconds
 
-#define ECG_BUFFER_SIZE     512
+#define ECG_BUFFER_SIZE     1024
+
+// Variáveis externas para sincronização
+extern SemaphoreHandle_t ecg_sample_semaphore;
 
 esp_err_t ecg_config(void);
 void ecg_task(void *pvParameters);

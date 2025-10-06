@@ -100,7 +100,7 @@ void app_main(void)
         .scl_io_num = ADS_SCL_PORT,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000,
+        .master.clk_speed = 400000,  // Reduzir para 100kHz para melhor compatibilidade
     };
 
     ESP_ERROR_CHECK(i2c_param_config(0, &i2c_conf));
@@ -111,7 +111,7 @@ void app_main(void)
     lcd_config();
     boot_image();
 
-   ESP_ERR_CHECK(ecg_config());
+    ESP_ERROR_CHECK(ecg_config());
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);
@@ -119,15 +119,13 @@ void app_main(void)
 
     web_register_sd_api(server);
 
-    // Criar tasks com handles para controle
+    // Criar tasks
     xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, &ecg_task_handle, APP_CPU_NUM);
 
     vTaskSuspend(ecg_task_handle);
 
-    //vTaskStartScheduler();
-
-    ESP_LOGI("MAIN", "Tasks criadas e suspensas - aguardando comando para iniciar");
+    ESP_LOGI("MAIN", "Tasks criadas e suspensas");
     
     // Variável para detectar mudanças de estado
     static system_state_t last_state = SYSTEM_COLLECTING_STATE;

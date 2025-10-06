@@ -12,6 +12,16 @@ extern QueueHandle_t ecg_buffer_queue;
 static uint16_t current_idx = 0;
 static int16_t current_buffer[ECG_BUFFER_SIZE];
 
+static gptimer_handle_t ecg_timer = NULL;
+SemaphoreHandle_t ecg_sample_semaphore = NULL;
+
+// Callback do timer para amostragem precisa
+static bool IRAM_ATTR ecg_timer_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
+    BaseType_t high_task_awoken = pdFALSE;
+    xSemaphoreGiveFromISR(ecg_sample_semaphore, &high_task_awoken);
+    return high_task_awoken == pdTRUE;
+}
+
 esp_err_t ecg_config(void) {
     
     ESP_LOGI("ECG", "Configurando ADS1115");
@@ -23,8 +33,8 @@ esp_err_t ecg_config(void) {
     ads1115_set_mux(&ads_device, ADS1115_MUX_0_1);              // Diferencial entre pinos 0 e 1
     ads1115_set_pga(&ads_device, ADS1115_FSR_2_048);            // Fundo de escala ±2.048V
     ads1115_set_mode(&ads_device, ADS1115_MODE_CONTINUOUS);     // Modo contínuo
-    ads1115_set_sps(&ads_device, ADS1115_SPS_64);               // 64 samples por segundo
-    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(1000));    // Timeout de 1 segundo
+    ads1115_set_sps(&ads_device, ADS1115_SPS_250);              // 250 SPS para suportar 100Hz com margem
+    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(50));     // Timeout aumentado para 100ms
     
     // Teste de leitura inicial
     int16_t test_value = ads1115_get_raw(&ads_device);
@@ -34,6 +44,35 @@ esp_err_t ecg_config(void) {
     }
 
     ESP_LOGI("ECG", "ADS1115 configurado com sucesso!");    
+    // Criar semáforo para sincronização de amostragem
+    ecg_sample_semaphore = xSemaphoreCreateBinary();
+    if (ecg_sample_semaphore == NULL) {
+        ESP_LOGE("ECG", "Falha ao criar semáforo de amostragem");
+        return ESP_FAIL;
+    }
+
+    // Configurar timer para controle preciso de amostragem
+    gptimer_config_t timer_config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000, // 1MHz, resolução de 1us
+    };
+    
+    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &ecg_timer));
+    
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = ecg_timer_callback,
+    };
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(ecg_timer, &cbs, NULL));
+    
+    gptimer_alarm_config_t alarm_config = {
+        .reload_count = 0,
+        .alarm_count = ECG_TIMER_PERIOD_US,
+        .flags.auto_reload_on_alarm = true,
+    };
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(ecg_timer, &alarm_config));
+
+    ESP_LOGI("ECG", "ADS1115 e timer configurados com sucesso!");    
     return ESP_OK;
 }
 
@@ -51,38 +90,48 @@ void ecg_task(void *pvParameters) {
     // Resetar variáveis ao iniciar
     current_idx = 0;
     memset(current_buffer, 0, sizeof(current_buffer));
+
+    ESP_ERROR_CHECK(gptimer_enable(ecg_timer));
+    ESP_ERROR_CHECK(gptimer_start(ecg_timer));
     
-    while(1) {
-        // Verificar se os eletrodos estão conectados
-        if(gpio_get_level(ECG_LO_MENOS) == 1 || gpio_get_level(ECG_LO_MAIS) == 1) {
-            ESP_LOGW("ECG", "Eletrodos desconectados");
-            vTaskDelay(pdMS_TO_TICKS(500));
-        } else {
+   while(1) {
+        // Aguardar sinal do timer
+        if(xSemaphoreTake(ecg_sample_semaphore, portMAX_DELAY) == pdTRUE) {
+            
+            // Verificar se os eletrodos estão conectados
+            if(gpio_get_level(ECG_LO_MENOS) == 1 || gpio_get_level(ECG_LO_MAIS) == 1) {
+                continue;
+            }
+                
+            // Aquisição
             current_buffer[current_idx] = ecg_measure();
             printf("%d\n", current_buffer[current_idx]);
             current_idx++;
 
             if(current_idx >= ECG_BUFFER_SIZE) {
                 if (ecg_buffer_queue != NULL) {
-                    // Tentar enviar por até 1 segundo
-                    if(xQueueSend(ecg_buffer_queue, &current_buffer, pdMS_TO_TICKS(1000)) != pdTRUE) {
-                        ESP_LOGW("ECG", "Fila cheia, descartando buffer");
+                    if(xQueueSend(ecg_buffer_queue, &current_buffer, pdMS_TO_TICKS(50)) != pdTRUE) {
+                        ESP_LOGE("ECG", "Erro no envio da fila");
                     } else {
-                        ESP_LOGI("ECG", "Buffer enviado para SD (512 amostras)");
+                        ESP_LOGI("ECG", "Buffer enviado");
                     }
                 } else {
-                    ESP_LOGW("ECG", "Fila ECG não inicializada, descartando dados");
+                    ESP_LOGW("ECG", "Fila ECG não inicializada");
                 }
                 current_idx = 0;
-                vTaskDelay(pdMS_TO_TICKS(5));
+                printf("\n--- BUFFER COMPLETO ---\n");  // Separador visual
             }
-            vTaskDelay(pdMS_TO_TICKS((int)ECG_DELAY_MS));
         }
     }
 }
 
 void finalize_ecg_collection(void) {
     ESP_LOGI("ECG", "Finalizando coleta ECG...");
+
+    if (ecg_timer != NULL) {
+        gptimer_stop(ecg_timer);
+        gptimer_disable(ecg_timer);
+    }
     
     if(current_idx > 0) {
         ESP_LOGI("ECG", "Enviando buffer parcial (%d amostras)", current_idx);
