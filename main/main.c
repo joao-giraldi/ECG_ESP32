@@ -32,16 +32,17 @@ static volatile _Atomic system_state_t sys_state = SYSTEM_BOOT_STATE;
 
 QueueHandle_t ecg_buffer_queue = NULL;
 
-// Handles das tasks para controle (suspender/resumir)
-static TaskHandle_t sd_task_handle = NULL;
+// Handle da task para controle (suspender/resumir)
 static TaskHandle_t ecg_task_handle = NULL;
 
+// Nome atual do arquivo pra controle
 char current_filename[32];
 
 // Tempos para controle de debounce na ISR
 static volatile uint32_t last_start_time = 0;
 static volatile uint32_t last_stop_time = 0;
 
+// Tratamento das interrupções (mudança de estado do sistema)
 static void gpio_isr_handler(void *arg) {
     uint32_t gpio_num = (uint32_t) arg;
     uint32_t current_time = xTaskGetTickCountFromISR() * portTICK_PERIOD_MS;
@@ -53,20 +54,13 @@ static void gpio_isr_handler(void *arg) {
             atomic_store(&sys_state, SYSTEM_COLLECTING_STATE);
             last_start_time = current_time;
             ESP_EARLY_LOGI("ISR", "START_INT (GPIO %d) - Estado: COLLECTING", (int)gpio_num);
-        } else {
-            ESP_EARLY_LOGD("ISR", "START bounce ignorado (time diff: %d ms)", 
-                           (int)(current_time - last_start_time));
         }
     } else if (gpio_num == STOP_INT_PORT) {
         // Verificar debounce para STOP
         if (current_time - last_stop_time > DEBOUNCE_TIME_MS) {
-            // Operação atômica - thread-safe
             atomic_store(&sys_state, SYSTEM_WEB_STATE);
             last_stop_time = current_time;
             ESP_EARLY_LOGI("ISR", "STOP_INT (GPIO %d) - Estado: WEB", (int)gpio_num);
-        } else {
-            ESP_EARLY_LOGD("ISR", "STOP bounce ignorado (time diff: %d ms)", 
-                           (int)(current_time - last_stop_time));
         }
     }
 }
@@ -99,7 +93,6 @@ void app_main(void)
     
     sd_config();
     
-    // Inicializar I2C uma única vez para todos os dispositivos
     ESP_LOGI("MAIN", "Inicializando barramento I2C...");
     i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
@@ -112,17 +105,13 @@ void app_main(void)
 
     ESP_ERROR_CHECK(i2c_param_config(0, &i2c_conf));
     ESP_ERROR_CHECK(i2c_driver_install(0, I2C_MODE_MASTER, 0, 0, 0));
+    ESP_LOGI("MAIN", "Barramento I2C iniciado");
     
-    // Configura e mostra logo do sistema
+    // Configura LCD e mostra logo do sistema
     lcd_config();
     boot_image();
 
-    esp_err_t ecg_ret = ecg_config();
-    if (ecg_ret != ESP_OK) {
-        ESP_LOGE("MAIN", "Falha na configuração do ECG: %s", esp_err_to_name(ecg_ret));
-    } else {
-        ESP_LOGI("MAIN", "ECG configurado com sucesso");
-    }
+   ESP_ERR_CHECK(ecg_config());
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);
@@ -131,7 +120,7 @@ void app_main(void)
     web_register_sd_api(server);
 
     // Criar tasks com handles para controle
-    xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, &sd_task_handle, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, &ecg_task_handle, APP_CPU_NUM);
 
     vTaskSuspend(ecg_task_handle);
@@ -172,9 +161,16 @@ void app_main(void)
                     ESP_LOGI("MAIN", "Estado: COLLECTING - Ativando tasks de coleta");
                     collection_start_time = 0;
                     last_lcd_update = 0;
-                    // Ativar task de coleta
-                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    
+                    // Limpar fila ECG antes de iniciar nova coleta
+                    xQueueReset(ecg_buffer_queue);
+                    ESP_LOGI("MAIN", "Fila ECG limpa");
+                    
+                    // Ativar tasks de coleta
+                    vTaskDelay(pdMS_TO_TICKS(500));
                     vTaskResume(ecg_task_handle);
+                    ESP_LOGI("MAIN", "Task ECG ativada");
+                    
                     lcd_display_collecting(0);
                     break;
                     
@@ -183,10 +179,15 @@ void app_main(void)
                     const char* temp_filename = get_current_filename();
                     strncpy(current_filename, temp_filename, sizeof(current_filename) - 1);
                     current_filename[sizeof(current_filename) - 1] = '\0';
+                    ESP_LOGI("MAIN", "Nome do arquivo capturado: %s", current_filename);
 
+                    finalize_ecg_collection();
+                    
                     vTaskSuspend(ecg_task_handle);
                     ESP_LOGI("MAIN", "Task ECG suspensa");
-                    vTaskDelay(pdMS_TO_TICKS(500)); // 500ms para processar fila
+                    
+                    ESP_LOGI("MAIN", "Aguardando processamento dos dados finais...");
+                    vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo para processar fila
                     finalize_current_file();
                     ESP_LOGI("MAIN", "Arquivo atual finalizado");
                     
@@ -196,10 +197,10 @@ void app_main(void)
                     // Resetar para começar com tela STOPPED
                     last_screen_change = xTaskGetTickCount() * portTICK_PERIOD_MS / 1000;
                     current_screen = 0; // Começar com STOPPED
-                    // Mostrar primeira tela imediatamente
+
                     lcd_display_stopped(final_collection_time, current_filename);
-                    ESP_LOGI("MAIN", "Coleta finalizada: %d s, próximo arquivo: %s", 
-                             final_collection_time, get_current_filename());
+                    ESP_LOGI("MAIN", "Coleta finalizada: %d s, arquivo: %s, próximo: %s", 
+                             final_collection_time, current_filename, get_current_filename());
                     break;
             }
             

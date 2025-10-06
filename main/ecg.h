@@ -14,14 +14,15 @@
 extern "C" {
 #endif
 
-#define ECG_SAMPLE_RATE     100           // 100 Hz sample rate
+#define ECG_SAMPLE_RATE     100                         // 100 Hz sample rate
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
 
-#define ECG_BUFFER_SIZE     1024
+#define ECG_BUFFER_SIZE     512
 
 esp_err_t ecg_config(void);
 void ecg_task(void *pvParameters);
 int16_t ecg_measure(void);
+void finalize_ecg_collection(void);
 
 #ifdef __cplusplus
 }

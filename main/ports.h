@@ -12,6 +12,7 @@ extern "C" {
 // MACROS PARA AS PORTS UTILIZADAS
 
 #define ADS_I2C_PORT        0
+
 #define ECG_LO_MENOS        18
 #define ECG_LO_MAIS         19
 #define ADS_SDA_PORT        21

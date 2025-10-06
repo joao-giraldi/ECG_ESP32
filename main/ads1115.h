@@ -9,7 +9,8 @@ extern "C" {
 #include "driver/i2c.h"
 #include "driver/gpio.h"
 
-typedef enum { // register address
+// Register address
+typedef enum {
   ADS1115_CONVERSION_REGISTER_ADDR = 0,
   ADS1115_CONFIG_REGISTER_ADDR,
   ADS1115_LO_THRESH_REGISTER_ADDR,
@@ -17,7 +18,8 @@ typedef enum { // register address
   ADS1115_MAX_REGISTER_ADDR
 } ads1115_register_addresses_t;
 
-typedef enum { // multiplex options
+// Multiplex options
+typedef enum {
   ADS1115_MUX_0_1 = 0,
   ADS1115_MUX_0_3,
   ADS1115_MUX_1_3,
@@ -28,7 +30,8 @@ typedef enum { // multiplex options
   ADS1115_MUX_3_GND,
 } ads1115_mux_t;
 
-typedef enum { // full-scale resolution options
+// Full-scale resolution options
+typedef enum { 
   ADS1115_FSR_6_144 = 0,
   ADS1115_FSR_4_096,
   ADS1115_FSR_2_048,
@@ -37,7 +40,8 @@ typedef enum { // full-scale resolution options
   ADS1115_FSR_0_256,
 } ads1115_fsr_t;
 
-typedef enum { // samples per second
+// Samples per second
+typedef enum { 
   ADS1115_SPS_8 = 0,
   ADS1115_SPS_16,
   ADS1115_SPS_32,
@@ -53,7 +57,8 @@ typedef enum {
   ADS1115_MODE_SINGLE
 } ads1115_mode_t;
 
-typedef union { // configuration register
+// Configuration register
+typedef union { 
   struct {
     uint16_t COMP_QUE:2;  // bits 0..  1  Comparator queue and disable
     uint16_t COMP_LAT:1;  // bit  2       Latching Comparator
@@ -84,10 +89,10 @@ typedef struct {
   TickType_t max_ticks;                       // maximum wait ticks for i2c bus
 } ads1115_t;
 
-// initialize device
-ads1115_t ads1115_config(i2c_port_t i2c_port, uint8_t address); // set up configuration
+// Initialize device
+ads1115_t ads1115_config(i2c_port_t i2c_port, uint8_t address);     // set up configuration
 
-// set configuration
+// Set configuration
 void ads1115_set_rdy_pin(ads1115_t* ads, gpio_num_t gpio);          // set up data-ready pin
 void ads1115_set_mux(ads1115_t* ads, ads1115_mux_t mux);            // set multiplexer
 void ads1115_set_pga(ads1115_t* ads, ads1115_fsr_t fsr);            // set fsr
@@ -96,9 +101,8 @@ void ads1115_set_sps(ads1115_t* ads, ads1115_sps_t sps);            // set sampl
 void ads1115_set_max_ticks(ads1115_t* ads, TickType_t max_ticks);   // maximum wait ticks for i2c bus
 
 int16_t ads1115_get_raw(ads1115_t* ads);                            // get voltage in bits
-double ads1115_get_voltage(ads1115_t* ads);                         // get voltage in volts
 
-#endif // ifdef ADS1115_H
+#endif
 
 #ifdef __cplusplus
 }

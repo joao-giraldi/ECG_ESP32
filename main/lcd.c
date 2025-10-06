@@ -17,8 +17,8 @@ void lcd_config(void) {
     esp_lcd_panel_io_i2c_config_t io_config = {
         .dev_addr = I2C_HW_ADDR,
         .control_phase_bytes = 1,               // De acordo com o Datasheet
-        .lcd_cmd_bits = LCD_CMD_BITS,   // De acordo com o Datasheet
-        .lcd_param_bits = LCD_CMD_BITS, // De acordo com o Datasheet
+        .lcd_cmd_bits = LCD_CMD_BITS,           // De acordo com o Datasheet
+        .lcd_param_bits = LCD_CMD_BITS,         // De acordo com o Datasheet
         .dc_bit_offset = 6,                     // De acordo com o Datasheet
     };
 

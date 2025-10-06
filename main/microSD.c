@@ -264,6 +264,9 @@ void sd_task(void *pvParameters) {
             } else {
                 ESP_LOGE("SD", "Buffer com dados inválidos descartado");
             }
+        } else {
+            // Timeout - sem dados na fila, continua aguardando
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }
