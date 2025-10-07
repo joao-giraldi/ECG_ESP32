@@ -362,6 +362,7 @@ function movingAverage(arr, win) {
   }
   return out;
 }
+
 function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
   const long = Math.max(1, Math.floor((highMs / 1000) * fs));
   const short = Math.max(1, Math.floor((lowMs / 1000) * fs));
@@ -370,6 +371,7 @@ function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
   for (let i = 0; i < x.length; i++) hp[i] = x[i] - base[i];
   return movingAverage(hp, short);
 }
+
 function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
   let mean = 0,
     varAcc = 0;
@@ -402,6 +404,7 @@ function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
   }
   return { peaks, z, thr };
 }
+
 function computeBpmFromPeaks(peaks, fs) {
   if (!peaks || peaks.length < 2)
     return { bpm: NaN, rrMean: NaN, beats: peaks.length };
@@ -448,7 +451,10 @@ function updateMetricsUI() {
  * ========================================================================= */
 async function handleBuffer(buf, nameLabel) {
   fsCur = Math.max(1, Number(fsInput?.value) || FS_CONST);
-  minViewLen = Math.max(MIN_SAMPLES_ABS, Math.round(fsCur * MIN_WINDOW_SECONDS));
+  minViewLen = Math.max(
+    MIN_SAMPLES_ABS,
+    Math.round(fsCur * MIN_WINDOW_SECONDS)
+  );
 
   const raw = parseBuffer(buf);
 
@@ -487,7 +493,8 @@ async function handleBuffer(buf, nameLabel) {
   fullData = trimmed;
   maxViewLen = fullData.length;
 
-  let lo = Infinity, hi = -Infinity;
+  let lo = Infinity,
+    hi = -Infinity;
   for (let i = 0; i < fullData.length; i++) {
     const v = fullData[i];
     if (v < lo) lo = v;
@@ -527,7 +534,6 @@ fsInput?.addEventListener("change", () => {
 
   stat.textContent = `total pts ${fullData.length} · Fs = ${fsCur} Hz`;
 });
-
 
 async function loadAndPlot() {
   const name = sel.value;
