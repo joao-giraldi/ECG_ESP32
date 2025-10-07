@@ -31,10 +31,10 @@ esp_err_t ecg_config(void) {
     
     // Configurar parâmetros do ADS1115 para ECG
     ads1115_set_mux(&ads_device, ADS1115_MUX_0_1);              // Diferencial entre pinos 0 e 1
-    ads1115_set_pga(&ads_device, ADS1115_FSR_2_048);            // Fundo de escala ±2.048V
+    ads1115_set_pga(&ads_device, ADS1115_FSR_2_048);            // Ganho = +-2.048V
     ads1115_set_mode(&ads_device, ADS1115_MODE_CONTINUOUS);     // Modo contínuo
-    ads1115_set_sps(&ads_device, ADS1115_SPS_250);              // 250 SPS para suportar 100Hz com margem
-    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(50));     // Timeout aumentado para 100ms
+    ads1115_set_sps(&ads_device, ADS1115_SPS_128);              // SPS MENOR = melhor filtro interno (128 SPS)
+    ads1115_set_max_ticks(&ads_device, pdMS_TO_TICKS(50));      // Timeout maior para estabilidade
     
     // Teste de leitura inicial
     int16_t test_value = ads1115_get_raw(&ads_device);
