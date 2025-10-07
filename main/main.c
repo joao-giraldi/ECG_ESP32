@@ -31,6 +31,7 @@ typedef volatile enum {
 static volatile _Atomic system_state_t sys_state = SYSTEM_BOOT_STATE;
 
 QueueHandle_t ecg_buffer_queue = NULL;
+extern gptimer_handle_t ecg_timer;
 
 // Handle da task para controle (suspender/resumir)
 static TaskHandle_t ecg_task_handle = NULL;
@@ -166,6 +167,10 @@ void app_main(void)
                     
                     // Ativar tasks de coleta
                     vTaskDelay(pdMS_TO_TICKS(500));
+
+                    ESP_ERROR_CHECK(gptimer_enable(ecg_timer));
+                    ESP_ERROR_CHECK(gptimer_start(ecg_timer));
+
                     vTaskResume(ecg_task_handle);
                     ESP_LOGI("MAIN", "Task ECG ativada");
                     

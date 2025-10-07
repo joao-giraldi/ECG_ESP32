@@ -16,9 +16,9 @@
 extern "C" {
 #endif
 
-#define ECG_SAMPLE_RATE     130                         // Hz sample rate target
+#define ECG_SAMPLE_RATE     100                          // 150Hz -> 100Hz
 #define ECG_DELAY_MS        (1000.0/ECG_SAMPLE_RATE)
-#define ECG_TIMER_PERIOD_US (1000000/ECG_SAMPLE_RATE)  // Timer period in microseconds
+#define ECG_TIMER_PERIOD_US (1000000/ECG_SAMPLE_RATE)   // Timer period in microseconds
 
 #define ECG_BUFFER_SIZE     1024
 

@@ -12,7 +12,7 @@ extern QueueHandle_t ecg_buffer_queue;
 static uint16_t current_idx = 0;
 static int16_t current_buffer[ECG_BUFFER_SIZE];
 
-static gptimer_handle_t ecg_timer = NULL;
+gptimer_handle_t ecg_timer = NULL;
 SemaphoreHandle_t ecg_sample_semaphore = NULL;
 
 // Callback do timer para amostragem precisa
@@ -90,9 +90,6 @@ void ecg_task(void *pvParameters) {
     // Resetar variáveis ao iniciar
     current_idx = 0;
     memset(current_buffer, 0, sizeof(current_buffer));
-
-    ESP_ERROR_CHECK(gptimer_enable(ecg_timer));
-    ESP_ERROR_CHECK(gptimer_start(ecg_timer));
     
    while(1) {
         // Aguardar sinal do timer
@@ -105,7 +102,7 @@ void ecg_task(void *pvParameters) {
                 
             // Aquisição
             current_buffer[current_idx] = ecg_measure();
-            printf("%d\n", current_buffer[current_idx]);
+            //printf("%d\n", current_buffer[current_idx]);
             current_idx++;
 
             if(current_idx >= ECG_BUFFER_SIZE) {
