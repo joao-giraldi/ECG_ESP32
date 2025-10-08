@@ -18,6 +18,7 @@
 
 #include "ports.h"
 #include "ecg.h"
+#include "lcd.h"
 
 #define MOUNT_POINT "/sdcard"
 #define MAX_FILES   50

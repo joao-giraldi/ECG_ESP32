@@ -92,8 +92,6 @@ void app_main(void)
         }
     }
     
-    sd_config();
-    
     ESP_LOGI("MAIN", "Inicializando barramento I2C...");
     i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
@@ -113,6 +111,7 @@ void app_main(void)
     boot_image();
 
     ESP_ERROR_CHECK(ecg_config());
+    sd_config();
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);

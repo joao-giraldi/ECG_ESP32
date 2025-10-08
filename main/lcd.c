@@ -26,7 +26,7 @@ void lcd_config(void) {
     };
 
     // Usar o barramento I2C já inicializado (I2C_NUM_0)
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_NUM_0, &io_config, &io_handle));
+    ESP_instruction_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_NUM_0, &io_config, &io_handle));
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
@@ -42,13 +42,13 @@ void lcd_config(void) {
     }
     
     ESP_LOGI(TAG, "Resetando painel...");
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    ESP_instruction_CHECK(esp_lcd_panel_reset(panel_handle));
     
     ESP_LOGI(TAG, "Inicializando painel...");
-    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+    ESP_instruction_CHECK(esp_lcd_panel_init(panel_handle));
     
     ESP_LOGI(TAG, "Ligando display...");
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
+    ESP_instruction_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
     ESP_LOGI(TAG, "Iniciando LVGL");
     const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
@@ -374,4 +374,50 @@ void lcd_display_server(void) {
     lv_refr_now(disp);
     
     ESP_LOGI(TAG, "Informações do servidor exibidas");
+}
+
+void lcd_display_error(char err_point) {
+    ESP_LOGW(TAG, "Exibindo tela de erro");
+
+    // Obter o display ativo
+    lv_disp_t * disp = lv_disp_get_default();
+    if (disp == NULL) {
+        ESP_LOGE(TAG, "Display não encontrado");
+        return;
+    }
+
+    // Obter a tela ativa
+    lv_obj_t * scr = lv_disp_get_scr_act(disp);
+    if (scr == NULL) {
+        ESP_LOGE(TAG, "Tela não encontrada");
+        return;
+    }
+
+    // Limpar a tela
+    lv_obj_clean(scr);
+
+    lv_obj_t * title = lv_label_create(scr);
+    if (title != NULL) {
+        char error_str[32];
+        snprintf(error_str, sizeof(error_str), "ERRO - %c", err_point);
+        lv_label_set_text(title, error_str);
+        lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 2);
+    }
+
+    lv_obj_t * instruction = lv_label_create(scr);
+    if (instruction != NULL) {
+        lv_label_set_text(instruction, "Reinicie o sistema!");
+        lv_obj_set_style_text_align(instruction, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(instruction, LV_ALIGN_CENTER, 0, 0);
+        
+        // Configurar para permitir múltiplas linhas se necessário
+        lv_label_set_long_mode(instruction, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(instruction, 120);
+    }
+
+    // Forçar atualização da tela
+    lv_refr_now(disp);
+    
+    ESP_LOGW(TAG, "Tela de erro exibida com sucesso");
 }
