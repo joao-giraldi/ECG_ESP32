@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-void sd_config(void);
+esp_err_t sd_config(void);
 void sd_task(void *pvParameters);
 void write_file(const char *path, int16_t *data);
 

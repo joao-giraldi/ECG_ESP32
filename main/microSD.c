@@ -17,7 +17,7 @@ static uint8_t write_count = 0;
 extern QueueHandle_t ecg_buffer_queue;
 extern TaskHandle_t ecg_handler;
 
-void sd_config(void) { 
+esp_err_t sd_config(void) { 
     // Inicializar mutex para proteção do nome do arquivo
     if (filename_mutex == NULL) {
         filename_mutex = xSemaphoreCreateMutex();
@@ -30,7 +30,9 @@ void sd_config(void) {
     
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .max_files = 5,
-        .allocation_unit_size = 16 * 1024
+        .allocation_unit_size = 16 * 1024,
+        .format_if_mount_failed = false,
+        .disk_status_check_enable = true
     };
 
     ESP_LOGI("SD", "Inicializando SD Card");
@@ -47,10 +49,7 @@ void sd_config(void) {
         .max_transfer_sz = 4000
     };
 
-    if(spi_bus_initialize(sd_host.slot, &bus_conf, SDSPI_DEFAULT_DMA) != ESP_OK) {
-        ESP_LOGE("SD", "Falha ao inicializar o SD.");
-        return;
-    }
+    ESP_ERROR_CHECK(spi_bus_initialize(sd_host.slot, &bus_conf, SDSPI_DEFAULT_DMA));
 
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = SD_CS_PORT;
@@ -58,15 +57,14 @@ void sd_config(void) {
 
     ESP_LOGI("ESP", "Montando sistema de arquivos");
 
-    if(esp_vfs_fat_sdspi_mount(mount_point, &sd_host, &slot_config, &mount_config, &sd_card) != ESP_OK) {
-        ESP_LOGE("SD", "Falha ao montar o sistema de arquivos.");
-    }
+    ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &sd_host, &slot_config, &mount_config, &sd_card));
 
     ESP_LOGI("SD", "Sistema de arquivos montado");
 
     //sdmmc_card_print_info(stdout, sd_card);
 
     ESP_LOGI("SD", "Cartão SD inicializado com sucesso");
+    return ESP_OK;
 }
 
 void write_file(const char *path, int16_t *data) {

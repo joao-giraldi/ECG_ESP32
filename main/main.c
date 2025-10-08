@@ -111,7 +111,7 @@ void app_main(void)
     boot_image();
 
     ESP_ERROR_CHECK(ecg_config());
-    sd_config();
+    ESP_ERROR_CHECK(sd_config());
 
     httpd_handle_t server = start_webserver();
     web_register_sd_api(server);
