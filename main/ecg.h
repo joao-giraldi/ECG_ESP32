@@ -11,6 +11,7 @@
 #include "esp_log.h"
 
 #include "ports.h"
+#include "sys_error.h"
 
 #ifdef __cplusplus
 extern "C" {

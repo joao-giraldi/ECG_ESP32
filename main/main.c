@@ -13,7 +13,8 @@
 #include "wifi.h"
 #include "web_server.h"
 #include "mdns_app.h"
-#include "lcd.h"    
+#include "lcd.h"
+#include "sys_error.h"
 
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM PRO_CPU_NUM
@@ -34,7 +35,8 @@ QueueHandle_t ecg_buffer_queue = NULL;
 extern gptimer_handle_t ecg_timer;
 
 // Handle da task para controle (suspender/resumir)
-static TaskHandle_t ecg_task_handle = NULL;
+TaskHandle_t ecg_task_handle = NULL;
+TaskHandle_t sd_task_handle = NULL;
 
 // Nome atual do arquivo pra controle
 char current_filename[32];
@@ -120,7 +122,7 @@ void app_main(void)
     web_register_sd_api(server);
 
     // Criar tasks
-    xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(sd_task, "sd_task", 8192, NULL, 2, &sd_task_handle, APP_CPU_NUM);
     xTaskCreatePinnedToCore(ecg_task, "ecg_task", 4096, NULL, 4, &ecg_task_handle, APP_CPU_NUM);
 
     vTaskSuspend(ecg_task_handle);

@@ -40,6 +40,7 @@ esp_err_t ecg_config(void) {
     int16_t test_value = ads1115_get_raw(&ads_device);
     if (test_value == 0) {
         ESP_LOGE("ECG", "Falha na comunicação com ADS1115");
+        err_handler("ECG");
         return ESP_FAIL;
     }
 

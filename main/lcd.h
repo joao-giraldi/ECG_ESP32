@@ -40,7 +40,7 @@ void lcd_display_collecting(uint32_t elapsed_time);
 void lcd_display_stopped(uint32_t total_time, const char* filename);
 void lcd_display_network(void);
 void lcd_display_server(void);
-void lcd_display_error(char err_point);
+void lcd_display_error(const char* err_point);
 
 #ifdef __cplusplus
 }

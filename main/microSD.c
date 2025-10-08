@@ -23,7 +23,6 @@ esp_err_t sd_config(void) {
         filename_mutex = xSemaphoreCreateMutex();
         if (filename_mutex == NULL) {
             ESP_LOGE("SD", "Falha ao criar mutex para nome do arquivo");
-            return;
         }
         ESP_LOGI("SD", "Mutex para nome do arquivo criado com sucesso");
     }
@@ -57,7 +56,10 @@ esp_err_t sd_config(void) {
 
     ESP_LOGI("ESP", "Montando sistema de arquivos");
 
-    ESP_ERROR_CHECK(esp_vfs_fat_sdspi_mount(mount_point, &sd_host, &slot_config, &mount_config, &sd_card));
+    if(esp_vfs_fat_sdspi_mount(mount_point, &sd_host, &slot_config, &mount_config, &sd_card) != ESP_OK) {
+        ESP_LOGE("SD", "Falha ao montar sistema de arquivos");
+        err_handler("ESP");
+    }
 
     ESP_LOGI("SD", "Sistema de arquivos montado");
 
@@ -74,7 +76,7 @@ void write_file(const char *path, int16_t *data) {
         current_file = fopen(path, "ab");
         if(current_file == NULL) {
             ESP_LOGE("SD", "Falha ao abrir o arquivo");
-            return;
+            err_handler("SD");
         }
     }
 
@@ -168,9 +170,11 @@ uint8_t get_next_file_number(void) {
         } else {
             fclose(f);
             ESP_LOGE("SD", "Erro ao escrever no arquivo contador");
+            err_handler("SD");
         }
     } else {
         ESP_LOGE("SD", "Erro ao abrir arquivo contador para escrita: %s (errno: %d)", strerror(errno), errno);
+        err_handler("SD");
     }
     
     ESP_LOGI("SD", "Próximo arquivo (circular): ecg_%d.bin", last_used);
