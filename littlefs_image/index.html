@@ -21,7 +21,7 @@
           </div>
         </div>
 
-        <!-- Controles: seletor + Fs + botão -->
+        <!-- Controles: seletor + Fs + botões -->
         <div class="controls controls--compact">
           <div class="ctrl">
             <label for="fileSel">Arquivo</label>
@@ -41,11 +41,16 @@
 
           <div class="ctrl btn-wrap">
             <label>&nbsp;</label>
-            <button id="btnLoad" class="btn">Carregar &amp; Desenhar</button>
+            <div class="btn-row">
+              <button id="btnLoad" class="btn">Carregar &amp; Desenhar</button>
+              <button id="btnDownload" class="btn" title="Baixar .txt" disabled>
+                Baixar .txt
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Infos logo abaixo dos controles -->
+        <!-- Infos -->
         <div class="info">
           <span><b>Duração:</b> <span id="infoDur">–</span></span>
           <span><b>BPM:</b> <span id="infoBpm">–</span></span>

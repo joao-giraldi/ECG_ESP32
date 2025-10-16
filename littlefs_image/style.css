@@ -24,7 +24,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
@@ -88,7 +89,6 @@ body {
   grid-template-columns: 1fr 140px auto;
 }
 
-/* Labels */
 .controls label {
   font-size: 12px;
   color: var(--muted);
@@ -96,7 +96,6 @@ body {
   margin-bottom: 6px;
 }
 
-/* Inputs e selects */
 .controls input,
 .controls select,
 .btn {
@@ -111,15 +110,20 @@ body {
   outline: none;
 }
 
-/* Inputs numéricos */
-.controls input[type="number"]::-webkit-outer-spin-button,
-.controls input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+/* Aparência consistente do botão (igual ao de carregar) */
+.btn {
+  appearance: none;
+  background: #111116;
+  border: 1px solid #2b2b33;
+  padding-inline: 16px;
+  cursor: pointer;
+  white-space: nowrap;
 }
-
-.controls input[type="number"] {
-  appearance: textfield;
+.btn:hover {
+  border-color: #3a3a44;
+}
+.btn:active {
+  transform: scale(0.98);
 }
 
 /* Campo específico do Fs */
@@ -128,6 +132,7 @@ body {
 }
 .ctrl.ctrl--fs input {
   text-align: right;
+  appearance: textfield; 
 }
 
 /* Foco */
@@ -138,24 +143,18 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
 }
 
-/* Botão */
-.btn {
-  appearance: none;
-  background: #111116;
-  border: 1px solid #2b2b33;
-  padding-inline: 16px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btn:active {
-  transform: scale(0.98);
-}
+/* Área da direita (botões) */
 .btn-wrap {
   align-self: end;
 }
 
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
 /* ===============================
-   Informações abaixo dos controles
+   Informações
 ==================================*/
 .info {
   display: flex;
@@ -165,7 +164,6 @@ body {
   font-size: 12px;
   color: var(--muted);
 }
-
 .info span {
   background: #0f0f13;
   border: 1px solid var(--surface-border);
@@ -207,7 +205,6 @@ body {
   border-radius: 999px;
   outline: none;
 }
-
 .x-scroll::-webkit-slider-thumb,
 .x-scroll::-moz-range-thumb {
   width: 14px;
@@ -229,19 +226,16 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-
   background: rgba(20, 20, 24, 0.85);
   border: 1px solid var(--surface-border);
   border-radius: 10px;
   padding: 6px 10px;
   backdrop-filter: blur(4px);
 }
-
 .zoom-overlay label {
   font-size: 12px;
   color: var(--muted);
 }
-
 .zoom-overlay input[type="range"] {
   width: 160px;
   height: 6px;
@@ -250,7 +244,6 @@ body {
   border-radius: 999px;
   outline: none;
 }
-
 .zoom-overlay input[type="range"]::-webkit-slider-thumb,
 .zoom-overlay input[type="range"]::-moz-range-thumb {
   width: 14px;
@@ -284,10 +277,14 @@ body {
   .btn {
     width: 100%;
   }
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ===============================
-   Acessibilidade (menos animações)
+   Acessibilidade
 ==================================*/
 @media (prefers-reduced-motion: reduce) {
   * {

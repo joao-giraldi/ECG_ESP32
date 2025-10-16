@@ -1,5 +1,5 @@
 /* =========================================================================
- * CONFIG FIXA (sem inputs na UI)
+ * CONFIG FIXA
  * ========================================================================= */
 const FS_CONST = 100;
 const FMT_CONST = "i16le";
@@ -10,6 +10,7 @@ const GAIN_CONST = 1.0;
  * ========================================================================= */
 const sel = document.getElementById("fileSel");
 const btn = document.getElementById("btnLoad");
+const btnDownload = document.getElementById("btnDownload");
 const meta = document.getElementById("meta");
 const stat = document.getElementById("stat");
 const cvs = document.getElementById("chart");
@@ -19,12 +20,10 @@ const zoomCtrl = document.getElementById("zoomCtrl");
 
 const infoDur = document.getElementById("infoDur");
 const infoBpm = document.getElementById("infoBpm");
-const infoSamples = document.getElementById("infoSamples");
-
 const fsInput = document.getElementById("fs");
 
 /* =========================================================================
- * STATE DO CANVAS/VISUALIZAÇÃO
+ * STATE
  * ========================================================================= */
 const DPR = window.devicePixelRatio || 1;
 let W = 0,
@@ -50,6 +49,8 @@ let dragStartView = 0;
 
 let rafId = 0;
 
+let currentLoadedName = null;
+
 /* =========================================================================
  * UTILS
  * ========================================================================= */
@@ -74,12 +75,10 @@ function syncCanvasSizeIfNeeded() {
   }
   return false;
 }
-
-function handleResize() {
+window.addEventListener("resize", () => {
   if (syncCanvasSizeIfNeeded()) scheduleRender();
-}
-window.addEventListener("resize", handleResize);
-handleResize();
+});
+syncCanvasSizeIfNeeded();
 
 function prettyBytes(b) {
   const u = ["B", "KB", "MB", "GB"];
@@ -89,6 +88,43 @@ function prettyBytes(b) {
     i++;
   }
   return b.toFixed(i ? 1 : 0) + " " + u[i];
+}
+
+/* ====== DOWNLOAD ====== */
+function signalToTxt(
+  values,
+  { decimals = 0, newline = "\n", asIntegers = true } = {}
+) {
+  const n = values.length;
+  const out = new Array(n);
+  if (asIntegers) {
+    for (let i = 0; i < n; i++) out[i] = Math.round(values[i]).toString();
+  } else {
+    const fmt = new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: decimals,
+      minimumFractionDigits: 0,
+    });
+    for (let i = 0; i < n; i++) out[i] = fmt.format(values[i]);
+  }
+  return out.join(newline) + newline;
+}
+function downloadTextFile(text, filename) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function makeSiblingTxt(name) {
+  if (!name) return "sinal.txt";
+  const i = name.lastIndexOf(".");
+  const base = i > 0 ? name.slice(0, i) : name;
+  return `${base}.txt`;
 }
 
 /* =========================================================================
@@ -107,6 +143,7 @@ async function listFiles() {
       o.value = "";
       sel.appendChild(o);
       btn.disabled = true;
+      btnDownload.disabled = true;
       return [];
     }
 
@@ -117,6 +154,7 @@ async function listFiles() {
       sel.appendChild(o);
     }
     btn.disabled = false;
+    btnDownload.disabled = !fullData;
     return js;
   } catch {
     sel.innerHTML = "";
@@ -125,12 +163,13 @@ async function listFiles() {
     o.value = "";
     sel.appendChild(o);
     btn.disabled = true;
+    btnDownload.disabled = true;
     return [];
   }
 }
 
 /* =========================================================================
- * PARSE DO BIN (formato fixo)
+ * PARSE DO BIN
  * ========================================================================= */
 function parseBuffer(buf) {
   const dv = new DataView(buf);
@@ -276,9 +315,8 @@ function setViewport(start, len) {
     const pos = denom > 0 ? Math.round((viewStart / denom) * 1000) : 0;
     xScroll.value = String(pos);
   }
-  if (zoomCtrl) {
-    zoomCtrl.value = String(lenToZoomValue(viewLen));
-  }
+  if (zoomCtrl) zoomCtrl.value = String(lenToZoomValue(viewLen));
+
   scheduleRender();
 }
 function setZoomFromAnchor(newLen, anchorPx) {
@@ -291,7 +329,6 @@ function setZoomFromAnchor(newLen, anchorPx) {
   const start = Math.round(anchorIdx - frac * len);
   setViewport(start, len);
 }
-
 cvs.addEventListener(
   "wheel",
   (e) => {
@@ -330,25 +367,22 @@ xScroll?.addEventListener("input", (e) => {
   const start = Math.round((val / 1000) * maxStart);
   setViewport(start, viewLen);
 });
-
 zoomCtrl?.addEventListener("input", (e) => {
   if (!fullData) return;
   const v = Number(e.target.value);
   const len = zoomValueToLen(v);
   setZoomFromAnchor(len, (W * DPR) / 2);
 });
-
 window.addEventListener("keydown", (e) => {
   if (!fullData) return;
-  if (e.key === "+" || e.key === "=") {
+  if (e.key === "+" || e.key === "=")
     setZoomFromAnchor(Math.round(viewLen / 1.3), (W * DPR) / 2);
-  } else if (e.key === "-" || e.key === "_") {
+  else if (e.key === "-" || e.key === "_")
     setZoomFromAnchor(Math.round(viewLen * 1.3), (W * DPR) / 2);
-  }
 });
 
 /* =========================================================================
- * BPM (detecção simples de picos)
+ * BPM (simplificado)
  * ========================================================================= */
 function movingAverage(arr, win) {
   const n = arr.length,
@@ -362,7 +396,6 @@ function movingAverage(arr, win) {
   }
   return out;
 }
-
 function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
   const long = Math.max(1, Math.floor((highMs / 1000) * fs));
   const short = Math.max(1, Math.floor((lowMs / 1000) * fs));
@@ -371,7 +404,6 @@ function bandpassMAvg(x, fs, lowMs = 80, highMs = 800) {
   for (let i = 0; i < x.length; i++) hp[i] = x[i] - base[i];
   return movingAverage(hp, short);
 }
-
 function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
   let mean = 0,
     varAcc = 0;
@@ -404,7 +436,6 @@ function detectRPeaks(samples, fs, { thrQuantile = 0.9, refrMs = 300 } = {}) {
   }
   return { peaks, z, thr };
 }
-
 function computeBpmFromPeaks(peaks, fs) {
   if (!peaks || peaks.length < 2)
     return { bpm: NaN, rrMean: NaN, beats: peaks.length };
@@ -416,7 +447,6 @@ function computeBpmFromPeaks(peaks, fs) {
   const rrMean = rrFiltered.reduce((a, b) => a + b, 0) / rrFiltered.length;
   return { bpm: 60 / rrMean, rrMean, beats: peaks.length };
 }
-
 function updateMetricsUI() {
   if (!fullData) return;
   const totalSamples = fullData.length;
@@ -429,21 +459,9 @@ function updateMetricsUI() {
   });
   const { bpm, beats } = computeBpmFromPeaks(peaks, fsCur);
 
-  const infoDur = document.getElementById("infoDur");
-  const infoBpm = document.getElementById("infoBpm");
-  const infoSamples = document.getElementById("infoSamples");
   if (infoDur) infoDur.textContent = `${minutes.toFixed(2)} min`;
   if (infoBpm)
     infoBpm.textContent = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "n/d";
-  if (infoSamples) infoSamples.textContent = `${totalSamples}`;
-
-  const summary = document.getElementById("summary");
-  if (summary) {
-    const bpmText = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "BPM n/d";
-    summary.textContent = `• ${bpmText} • ${beats} batimentos • ${minutes.toFixed(
-      2
-    )} min`;
-  }
 }
 
 /* =========================================================================
@@ -458,21 +476,17 @@ async function handleBuffer(buf, nameLabel) {
 
   const raw = parseBuffer(buf);
 
-  // === Remover padding de zeros/quase-zeros no final (detecção automática) ===
   let trimmed = raw;
-
   const ZERO_THRESHOLD = 5;
   const MIN_RUN_SEC = 0.25;
   const MIN_RUN_SAMPLES = Math.round((fsCur || 100) * MIN_RUN_SEC);
-
   let zeroRun = 0;
   let lastValidIdx = raw.length - 1;
 
   for (let i = raw.length - 1; i >= 0; i--) {
     const v = raw[i];
-    if (Math.abs(v) <= ZERO_THRESHOLD) {
-      zeroRun++;
-    } else {
+    if (Math.abs(v) <= ZERO_THRESHOLD) zeroRun++;
+    else {
       if (zeroRun >= MIN_RUN_SAMPLES) {
         lastValidIdx = i;
         break;
@@ -480,15 +494,8 @@ async function handleBuffer(buf, nameLabel) {
       zeroRun = 0;
     }
   }
-
-  if (lastValidIdx < raw.length - 1) {
+  if (lastValidIdx < raw.length - 1)
     trimmed = raw.subarray(0, lastValidIdx + 1);
-    const removed = raw.length - trimmed.length;
-    const pct = ((removed / raw.length) * 100).toFixed(1);
-    console.log(`🧹 Cortados ${removed} amostras (${pct}%) de zeros finais`);
-  } else {
-    console.log("✅ Nenhum padding de zeros detectado");
-  }
 
   fullData = trimmed;
   maxViewLen = fullData.length;
@@ -512,6 +519,8 @@ async function handleBuffer(buf, nameLabel) {
   updateMetricsUI();
   meta.textContent = nameLabel;
   stat.textContent = `total pts ${fullData.length}`;
+
+  if (btnDownload) btnDownload.disabled = !fullData || fullData.length === 0;
 }
 
 fsInput?.addEventListener("change", () => {
@@ -520,18 +529,14 @@ fsInput?.addEventListener("change", () => {
   if (!fullData) return;
 
   fsCur = v;
-
-  const oldMin = minViewLen;
   minViewLen = Math.max(
     MIN_SAMPLES_ABS,
     Math.round(fsCur * MIN_WINDOW_SECONDS)
   );
-
   if (viewLen < minViewLen) setViewport(viewStart, minViewLen);
 
   updateMetricsUI();
   scheduleRender();
-
   stat.textContent = `total pts ${fullData.length} · Fs = ${fsCur} Hz`;
 });
 
@@ -556,11 +561,30 @@ async function loadAndPlot() {
   stat.textContent = `download ${(t1 - t0).toFixed(0)} ms · parse ${(
     t2 - t1
   ).toFixed(0)} ms · total pts ${fullData.length}`;
+
+  currentLoadedName = name;
 }
 btn?.addEventListener("click", loadAndPlot);
 
 /* =========================================================================
- * DRAG & DROP LOCAL (com highlight)
+ * DOWNLOAD: sempre o arquivo inteiro
+ * ========================================================================= */
+btnDownload?.addEventListener("click", () => {
+  if (!fullData || !fullData.length) return;
+
+  const txt = signalToTxt(fullData, {
+    asIntegers: true,
+    decimals: 0,
+    newline: "\n",
+  });
+
+  const baseName = currentLoadedName || sel?.value || "sinal";
+  const filename = makeSiblingTxt(baseName);
+  downloadTextFile(txt, filename);
+});
+
+/* =========================================================================
+ * DRAG & DROP LOCAL
  * ========================================================================= */
 let dragCounter = 0;
 cvs.addEventListener("dragenter", (e) => {
@@ -587,6 +611,8 @@ cvs.addEventListener("drop", async (e) => {
   meta.textContent = `${f.name} — (local)`;
   const buf = await f.arrayBuffer();
   await handleBuffer(buf, `${f.name} — (local) ${prettyBytes(buf.byteLength)}`);
+
+  currentLoadedName = f.name;
 });
 
 /* =========================================================================
@@ -596,5 +622,6 @@ cvs.addEventListener("drop", async (e) => {
   try {
     await listFiles();
   } catch {}
+  if (btnDownload) btnDownload.disabled = true;
   scheduleRender();
 })();
