@@ -1,80 +1,84 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
-
-<head>
+  <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>ECG Viewer</title>
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="wrap">
-        <div class="card">
-            <div class="head">
-                <div class="title">ECG — Visualizador</div>
-                <div class="pill">Acesse <b>192.168.4.1</b> conectado ao Wi-Fi do ESP</div>
-            </div>
-
-            <div class="controls">
-                <div class="ctrl">
-                    <label for="fileSel">Arquivo</label>
-                    <select id="fileSel"></select>
-                </div>
-
-                <div class="ctrl">
-                    <label for="fs">Fs (Hz)</label>
-                    <input id="fs" type="number" inputmode="numeric" value="100" min="1" />
-                </div>
-
-                <div class="ctrl">
-                    <label for="fmt">Formato</label>
-                    <select id="fmt">
-                        <option value="i16le" selected>Int16 LE</option>
-                        <option value="u16le">Uint16 LE</option>
-                        <option value="i8">Int8</option>
-                        <option value="u8">Uint8</option>
-                    </select>
-                </div>
-
-                <div class="ctrl">
-                    <label for="gain">Ganho (LSB→mV)</label>
-                    <input id="gain" type="number" step="0.01" value="1.0" />
-                </div>
-
-                <div class="ctrl btn-wrap">
-                    <label>&nbsp;</label>
-                    <button id="btnLoad" class="btn">Carregar &amp; Desenhar</button>
-                </div>
-
-                <!-- <div class="ctrl btn-wrap">
-                    <label>&nbsp;</label>
-                    <button id="btnLocal" class="btn" type="button">Usar .bin local</button>
-                    <input id="localFile" type="file" accept=".bin" hidden />
-                </div> -->
-
-            </div>
-
-            <div class="canvasBox">
-                <canvas id="chart"></canvas>
-                <input id="xScroll" class="x-scroll" type="range" min="0" max="1000" value="0" />
-
-                <div class="zoom-overlay">
-                    <label for="zoomCtrl">Zoom</label>
-                    <input id="zoomCtrl" type="range" min="0" max="1000" value="300" />
-                </div>
-            </div>
-
+      <div class="card">
+        <div class="head">
+          <div class="title">ECG — Visualizador</div>
+          <div class="pill">
+            Acesse <b>192.168.4.1</b> conectado ao Wi-Fi do ESP
+          </div>
         </div>
 
+        <!-- Controles: seletor + Fs + botões -->
+        <div class="controls controls--compact">
+          <div class="ctrl">
+            <label for="fileSel">Arquivo</label>
+            <select id="fileSel"></select>
+          </div>
 
-        <div class="footer">
-            <span id="meta">–</span>
-            <span id="stat"></span>
+          <div class="ctrl ctrl--fs">
+            <label for="fs">Fs (Hz)</label>
+            <input
+              id="fs"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              value="100"
+            />
+          </div>
+
+          <div class="ctrl btn-wrap">
+            <label>&nbsp;</label>
+            <div class="btn-row">
+              <button id="btnLoad" class="btn">Carregar &amp; Desenhar</button>
+              <button id="btnDownload" class="btn" title="Baixar .txt" disabled>
+                Baixar .txt
+              </button>
+            </div>
+          </div>
         </div>
-    </div>
-    </div>
-</body>
 
+        <!-- Infos -->
+        <div class="info">
+          <span><b>Duração:</b> <span id="infoDur">–</span></span>
+          <span><b>BPM:</b> <span id="infoBpm">–</span></span>
+        </div>
+
+        <!-- Gráfico -->
+        <div class="canvasBox">
+          <canvas id="chart"></canvas>
+          <input
+            id="xScroll"
+            class="x-scroll"
+            type="range"
+            min="0"
+            max="1000"
+            value="0"
+          />
+
+          <div class="zoom-overlay">
+            <label for="zoomCtrl">Zoom</label>
+            <input id="zoomCtrl" type="range" min="0" max="1000" value="300" />
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span id="meta">–</span>
+        <span id="stat"></span>
+      </div>
+    </div>
+  </body>
 </html>
