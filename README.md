@@ -49,9 +49,7 @@ A seguir estão listados os principais componentes utilizados na montagem do sis
 
 A figura a seguir ilustra as conexões entre os principais componentes do sistema (ESP32, ADS1115, AD8232, LCD, microSD, regulador e controles físicos):
 
-> **Figura – Esquema de Conexão Geral do Sistema**
-
-*(Inserir aqui a imagem do diagrama completo do circuito com o ESP32 e periféricos conectados)*
+<img width="1008" height="777" alt="ecg_pinout" src="https://github.com/user-attachments/assets/6e8a1887-b950-4605-a37f-392a96d70e3e" />
 
 ---
 
