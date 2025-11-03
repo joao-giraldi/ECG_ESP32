@@ -45,12 +45,29 @@ A seguir estão listados os principais componentes utilizados na montagem do sis
 
 ---
 
-### Esquema de Conexão
+### Esquema de Conexões
 
 A figura a seguir ilustra as conexões entre os principais componentes do sistema (ESP32, ADS1115, AD8232, LCD, microSD, regulador e controles físicos):
 
 <img width="1008" height="777" alt="ecg_pinout" src="https://github.com/user-attachments/assets/6e8a1887-b950-4605-a37f-392a96d70e3e" />
 
+### Tabela de Conexões
+
+| Pino | Dispositivo | Pino Dispositivo|
+|----------|-------------|-----------------|
+| ESP D4  | MicroSD       | MISO |
+| ESP D5  | MicroSD       | CS   |
+| ESP D15 | MicroSD       | SCK  |
+| ESP D18 | ECG AD8232    | LO-  |
+| ESP D19 | ECG AS8232    | LO+  |
+| ESP D21 | ADS1115 / LCD | SDA  |
+| ESP D22 | ADS1115 / LCD | SCL  |
+| ESP D23 | MicroSD       | MOSI |
+| ESP D32 | Botão START   | Pull-Down |
+| ESP D33 | Botão STOP    | Pull-Down |
+| ESP VIN | 5V            | -         |
+| AD8232 OUTPUT | ADS1115 | A0   |
+| ADS1115 ADDR | - | GND |
 ---
 
 ## Instalação
