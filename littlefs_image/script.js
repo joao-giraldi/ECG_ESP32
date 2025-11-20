@@ -91,7 +91,8 @@ function prettyBytes(b) {
 }
 
 /* ====== DOWNLOAD ====== */
-function signalToTxt(
+// Agora gera CSV (um valor por linha)
+function signalToCsv(
   values,
   { decimals = 0, newline = "\n", asIntegers = true } = {}
 ) {
@@ -108,8 +109,8 @@ function signalToTxt(
   }
   return out.join(newline) + newline;
 }
-function downloadTextFile(text, filename) {
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+function downloadCsvFile(text, filename) {
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -120,11 +121,11 @@ function downloadTextFile(text, filename) {
   a.remove();
   URL.revokeObjectURL(url);
 }
-function makeSiblingTxt(name) {
-  if (!name) return "sinal.txt";
+function makeSiblingCsv(name) {
+  if (!name) return "sinal.csv";
   const i = name.lastIndexOf(".");
   const base = i > 0 ? name.slice(0, i) : name;
-  return `${base}.txt`;
+  return `${base}.csv`;
 }
 
 /* =========================================================================
@@ -450,8 +451,7 @@ function computeBpmFromPeaks(peaks, fs) {
 function updateMetricsUI() {
   if (!fullData) return;
   const totalSamples = fullData.length;
-  const durationSec = totalSamples / (fsCur || 1);
-  const minutes = durationSec / 60;
+  const durationSec = totalSamples / (fsCur || 1); // <-- duração em segundos
 
   const { peaks } = detectRPeaks(fullData, fsCur, {
     thrQuantile: 0.9,
@@ -459,7 +459,8 @@ function updateMetricsUI() {
   });
   const { bpm, beats } = computeBpmFromPeaks(peaks, fsCur);
 
-  if (infoDur) infoDur.textContent = `${minutes.toFixed(2)} min`;
+  // Agora exibindo em segundos
+  if (infoDur) infoDur.textContent = `${durationSec.toFixed(2)} s`;
   if (infoBpm)
     infoBpm.textContent = isFinite(bpm) ? `${bpm.toFixed(0)} BPM` : "n/d";
 }
@@ -572,15 +573,15 @@ btn?.addEventListener("click", loadAndPlot);
 btnDownload?.addEventListener("click", () => {
   if (!fullData || !fullData.length) return;
 
-  const txt = signalToTxt(fullData, {
+  const csv = signalToCsv(fullData, {
     asIntegers: true,
     decimals: 0,
     newline: "\n",
   });
 
   const baseName = currentLoadedName || sel?.value || "sinal";
-  const filename = makeSiblingTxt(baseName);
-  downloadTextFile(txt, filename);
+  const filename = makeSiblingCsv(baseName);
+  downloadCsvFile(csv, filename);
 });
 
 /* =========================================================================
