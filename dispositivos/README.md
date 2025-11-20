@@ -1,6 +1,6 @@
 # Dispositivos utilizados no projeto
 
-> Este arquivo funciona como um hub para os dispositivos usados neste projeto. Use a tabela abaixo para localizar rapidamente o código fonte ou o componente de cada sensor.
+> Este arquivo funciona como um hub para os dispositivos usados neste projeto. Use a tabela abaixo para localizar rapidamente o código fonte ou o README de cada componente.
 
 | Dispositivo | Implementação | Mais indormações |
 |:---:|:---:|:---:|
