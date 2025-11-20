@@ -2,6 +2,10 @@
 
 Visão geral e instruções rápidas para o uso do conversor ADC ADS1115 no projeto.
 
+<p align="center">
+  <img width="250" height="auto" alt="image" src="https://github.com/user-attachments/assets/17839e62-0656-4cf7-a0a4-2be97b2ab68b" />
+</p>
+
 **Local do código:** [ads1115.c](../../main/ads1115.c), [ads1115.h](../../main/ads1115.h)
 
 ## 1. Resumo
