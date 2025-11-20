@@ -2,6 +2,10 @@
 
 Visão geral e instruções rápidas para o uso do display LCD no projeto.
 
+<p align="center">
+  <img width="250" height="auto" alt="image" src="https://github.com/user-attachments/assets/bf9fde8f-5224-4916-bb01-44d489b48d15" />
+</p>
+
 **Local do código:** [lcd.c](../../main/lcd.c), [lcd.h](../../main/lcd.h)
 
 ## 1. Resumo
