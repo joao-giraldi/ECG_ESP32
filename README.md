@@ -1,5 +1,9 @@
 # Projeto de Sistemas Ubíquos: Eletrocardiograma com ESP32
 
+<p align="center">
+ <img width="350" height="auto" alt="ecg_image" src="https://github.com/user-attachments/assets/7b9bb17f-b313-4873-aa28-325dfc571c5a" />
+<p/>
+
 ## Introdução
 
 Este projeto foi desenvolvido como parte da disciplina **Sistemas Ubíquos (DEC0021)** do curso de **Engenharia de Computação da Universidade Federal de Santa Catarina (UFSC)** no segundo semestre de 2025.
