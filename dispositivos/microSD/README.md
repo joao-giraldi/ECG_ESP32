@@ -2,6 +2,10 @@
 
 Visão geral e instruções rápidas para o uso do cartão microSD no projeto.
 
+<p align="center">
+  <img width="250" height="auto" alt="image" src="https://github.com/user-attachments/assets/d1b48c46-82de-4582-923d-bcce5869cee8" />  
+</p>
+
 **Local do código:** [microSD.c](../../main/microSD.c), [microSD.h](../../main/microSD.h)
 
 ## 1. Resumo
