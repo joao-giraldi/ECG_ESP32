@@ -2,6 +2,10 @@
 
 Visão geral e instruções rápidas para o uso do módulo ECG AD8232 no projeto.
 
+<p align="center">
+  <img width="250" height="600" alt="image" src="https://github.com/user-attachments/assets/44cf8931-2c1f-4392-be6a-1960d761864b" />  
+</p>
+
 **Local do código:** [ecg.c](../../main/ecg.c), [ecg.h](../../main/ecg.h)
 
 ## 1. Resumo
