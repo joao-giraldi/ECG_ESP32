@@ -72,12 +72,10 @@ esp_err_t sd_config(void) {
 void write_file(const char *path, int16_t *data) {
     ESP_LOGI("SD", "Abrindo arquivo para APPEND BINÁRIO");
 
+    current_file = fopen(path, "ab");
     if(current_file == NULL) {
-        current_file = fopen(path, "ab");
-        if(current_file == NULL) {
-            ESP_LOGE("SD", "Falha ao abrir o arquivo");
-            err_handler("SD");
-        }
+        ESP_LOGE("SD", "Falha ao abrir o arquivo");
+        err_handler("SD");
     }
 
     fflush(current_file);
@@ -121,6 +119,13 @@ void finalize_current_file(void) {
         if (xSemaphoreTake(filename_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
             strncpy(current_filename, new_filename, sizeof(current_filename) - 1);
             current_filename[sizeof(current_filename) - 1] = '\0';
+
+            // Apagar conteúdo de um arquivo caso ele já exista
+            FILE *temp = fopen(current_filename, "wb");
+            if(temp) {
+                fclose(temp);
+            }
+
             xSemaphoreGive(filename_mutex);
             ESP_LOGI("SD", "Arquivo avançado para: %s", new_filename);
         } else {

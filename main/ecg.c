@@ -124,8 +124,6 @@ void ecg_task(void *pvParameters) {
 }
 
 void finalize_ecg_collection(void) {
-    ESP_LOGI("ECG", "Finalizando coleta ECG...");
-
     if (ecg_timer != NULL) {
         gptimer_stop(ecg_timer);
         gptimer_disable(ecg_timer);

@@ -74,7 +74,7 @@ void app_main(void)
     static uint32_t last_lcd_update = 0;
     uint32_t current_time = 0;
 
-    wifi_init_ap("ECG-ESP32", "12345678", 6, 4, false);
+    wifi_init_ap(WIFI_SSID, WIFI_PASS, 6, 4, false);
     
     ESP_ERROR_CHECK(config_ports());
     
@@ -107,10 +107,6 @@ void app_main(void)
     ESP_ERROR_CHECK(i2c_param_config(0, &i2c_conf));
     ESP_ERROR_CHECK(i2c_driver_install(0, I2C_MODE_MASTER, 0, 0, 0));
     ESP_LOGI("MAIN", "Barramento I2C iniciado");
-    
-    // Configura LCD e mostra logo do sistema
-    lcd_config();
-    boot_image();
 
     ESP_ERROR_CHECK(ecg_config());
     ESP_ERROR_CHECK(sd_config());
@@ -139,7 +135,9 @@ void app_main(void)
     // Variável para armazenar o tempo total da última coleta (congelado)
     static uint32_t final_collection_time = 0;
     
-    // Tempo para estabilizar sistema e mostrar a logo
+    // Configura LCD e mostra logo do sistema
+    lcd_config();
+    boot_image();
     vTaskDelay(pdMS_TO_TICKS(3000));
     
     while (1)
@@ -191,7 +189,7 @@ void app_main(void)
                     ESP_LOGI("MAIN", "Task ECG suspensa");
                     
                     ESP_LOGI("MAIN", "Aguardando processamento dos dados finais...");
-                    vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo para processar fila
+                    //vTaskDelay(pdMS_TO_TICKS(1000)); // 1 segundo para processar fila
                     finalize_current_file();
                     ESP_LOGI("MAIN", "Arquivo atual finalizado");
                     
