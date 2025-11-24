@@ -6,5 +6,5 @@
 |:---:|:---:|:---:|
 | AD8232 | [ecg.c](../main/ecg.c) | [README](./ad8232/) |
 | ADS1115 | [ads1115.c](../main/ads1115.c) | [README](./ads1115/) |
-| LCD (display) | [main/lcd.c](../main/lcd.c) | [README](./lcd/) |
+| LCD (display) | [lcd.c](../main/lcd.c) | [README](./lcd/) |
 | microSD | [microSD.c](../main/microSD.c) | [README](./microSD/) |
